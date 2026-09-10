@@ -1,7 +1,7 @@
 import React from 'react';
 import { AiAssessment } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
-import { Sparkles, Info, ShieldAlert, Cpu } from 'lucide-react';
+import { Sparkles, Cpu, Info } from 'lucide-react';
 import { PriorityBadge } from './StatusBadge';
 
 interface AiAssessmentCardProps {
@@ -32,7 +32,7 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
               {t.report.aiNoticeTitle}
             </h4>
             <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
-              Advisory Triage
+              {t.aiCard.advisoryBadge}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
@@ -45,7 +45,7 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
         <div className="bg-white p-3 rounded border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wide block">
-            Suggested Category
+            {t.aiCard.suggestedCategory}
           </span>
           <span className="text-sm font-semibold text-slate-900 mt-0.5 block">
             {assessment.category}
@@ -54,7 +54,7 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
 
         <div className="bg-white p-3 rounded border border-slate-200">
           <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wide block">
-            Suggested Department
+            {t.aiCard.suggestedDepartment}
           </span>
           <span className="text-sm font-semibold text-slate-900 mt-0.5 block truncate" title={assessment.suggestedDepartment}>
             {assessment.suggestedDepartment}
@@ -64,14 +64,14 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
         <div className="bg-white p-3 rounded border border-slate-200 flex items-center justify-between">
           <div>
             <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wide block">
-              Suggested Priority
+              {t.aiCard.suggestedPriority}
             </span>
             <div className="mt-1">
               <PriorityBadge priority={assessment.suggestedPriority} size="sm" />
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-slate-500 uppercase block">Impact Score</span>
+            <span className="text-[10px] text-slate-500 uppercase block">{t.aiCard.priorityScore}</span>
             <span className="text-lg font-bold text-indigo-900">
               {assessment.priorityScore}
               <span className="text-xs font-normal text-slate-400">/100</span>
@@ -85,7 +85,7 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
         <div className="mt-3 pt-3 border-t border-slate-100">
           <h5 className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-indigo-600" />
-            Preliminary Algorithmic Reasoning Factors:
+            {t.aiCard.entitiesTitle}:
           </h5>
           <ul className="space-y-1.5">
             {assessment.reasoning.map((item, idx) => (

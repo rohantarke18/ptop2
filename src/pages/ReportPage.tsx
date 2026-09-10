@@ -9,6 +9,8 @@ import { FileUploader } from '../components/common/FileUploader';
 import { MapPlaceholder } from '../components/common/MapPlaceholder';
 import { AiAssessmentCard } from '../components/common/AiAssessmentCard';
 import { StatusBadge, PriorityBadge } from '../components/common/StatusBadge';
+import Stepper, { Step } from '../components/common/Stepper';
+import { getLocalizedCategory } from '../utils/localizedData';
 import {
   FileText,
   MapPin,
@@ -39,7 +41,7 @@ const CATEGORIES: ProblemCategory[] = [
 ];
 
 export const ReportPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { showToast } = useNotifications();
   const navigate = useNavigate();
@@ -227,14 +229,6 @@ export const ReportPage: React.FC = () => {
     );
   }
 
-  const steps = [
-    { num: 1, title: t.report.step1Title, icon: FileText },
-    { num: 2, title: t.report.step2Title, icon: MapPin },
-    { num: 3, title: t.report.step3Title, icon: UploadCloud },
-    { num: 4, title: t.report.step4Title, icon: AlertTriangle },
-    { num: 5, title: t.report.step5Title, icon: CheckCircle2 },
-  ];
-
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header */}
@@ -250,47 +244,88 @@ export const ReportPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Stepper Navigation */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-2xs">
-        <div className="flex items-center justify-between overflow-x-auto gap-2">
-          {steps.map((step) => {
-            const Icon = step.icon;
-            const isCurrent = currentStep === step.num;
-            const isCompleted = currentStep > step.num;
-
-            return (
-              <div
-                key={step.num}
-                className={`flex items-center gap-2 text-xs font-medium shrink-0 px-2 py-1 rounded ${
-                  isCurrent
-                    ? 'text-blue-600 font-bold bg-blue-50'
-                    : isCompleted
-                    ? 'text-emerald-700'
-                    : 'text-slate-400'
-                }`}
+      {/* React Bits Animated Stepper */}
+      <Stepper
+        currentStep={currentStep}
+        onStepChange={(step) => {
+          setCurrentStep(step);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        beforeStepChange={(from, to) => {
+          if (to > from) {
+            return validateStep(from);
+          }
+          return true;
+        }}
+        onFinalStepCompleted={handleSubmit}
+        stepTitles={[
+          t.report.step1Title,
+          t.report.step2Title,
+          t.report.step3Title,
+          t.report.step4Title,
+          t.report.step5Title,
+        ]}
+        stepCircleContainerClassName="border border-slate-200 bg-white rounded-xl shadow-xs"
+        contentClassName="bg-white"
+        footerClassName="bg-white border-t border-slate-100"
+        renderFooter={({ currentStep: stepIdx, isLastStep, handleBack: onBack, handleNext: onNext }) => (
+          <div className="flex items-center justify-between w-full">
+            {stepIdx > 1 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onBack();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
               >
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                    isCurrent
-                      ? 'bg-blue-600 text-white font-bold'
-                      : isCompleted
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  {isCompleted ? '✓' : step.num}
-                </div>
-                <span className="hidden sm:inline">{step.title}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{t.report.prevBtn}</span>
+              </button>
+            ) : (
+              <div />
+            )}
 
-      {/* Step Form Container */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+            {!isLastStep ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (validateStep(stepIdx)) {
+                    onNext();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer transition-colors"
+              >
+                <span>{t.report.nextBtn}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{t.report.submittingButton}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{t.report.submitButton}</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      >
         {/* ================= STEP 1: Describe the problem ================= */}
-        {currentStep === 1 && (
+        <Step>
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -328,7 +363,7 @@ export const ReportPage: React.FC = () => {
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
-                    {cat}
+                    {getLocalizedCategory(cat, language)}
                   </option>
                 ))}
               </select>
@@ -351,10 +386,10 @@ export const ReportPage: React.FC = () => {
               )}
             </div>
           </div>
-        )}
+        </Step>
 
         {/* ================= STEP 2: Location ================= */}
-        {currentStep === 2 && (
+        <Step>
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -449,10 +484,10 @@ export const ReportPage: React.FC = () => {
               />
             </div>
           </div>
-        )}
+        </Step>
 
         {/* ================= STEP 3: Evidence ================= */}
-        {currentStep === 3 && (
+        <Step>
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -477,10 +512,10 @@ export const ReportPage: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        </Step>
 
         {/* ================= STEP 4: Impact & Urgency ================= */}
-        {currentStep === 4 && (
+        <Step>
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -543,10 +578,10 @@ export const ReportPage: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        </Step>
 
         {/* ================= STEP 5: Review & Submit ================= */}
-        {currentStep === 5 && (
+        <Step>
           <div className="space-y-6">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -622,55 +657,8 @@ export const ReportPage: React.FC = () => {
               {t.report.reviewDisclaimer}
             </p>
           </div>
-        )}
-
-        {/* Step Controller Buttons */}
-        <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
-          {currentStep > 1 ? (
-            <button
-              type="button"
-              onClick={handleBack}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{t.report.prevBtn}</span>
-            </button>
-          ) : (
-            <div />
-          )}
-
-          {currentStep < 5 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
-            >
-              <span>{t.report.nextBtn}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-6 py-2.5 text-xs sm:text-sm font-bold rounded bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{t.report.submittingButton}</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{t.report.submitButton}</span>
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
+        </Step>
+      </Stepper>
     </div>
   );
 };

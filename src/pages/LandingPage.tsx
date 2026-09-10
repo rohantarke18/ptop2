@@ -32,6 +32,7 @@ import {
   Layers,
   PhoneCall,
 } from 'lucide-react';
+import { IntegratedAuthoritiesLoop } from '../components/common/IntegratedAuthoritiesLoop';
 
 type RoleTab = 'citizen' | 'officer' | 'department_admin' | 'super_admin';
 
@@ -564,6 +565,15 @@ export const LandingPage: React.FC = () => {
               <span>{t.portalAuth.versionTag}</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ===================================================
+          INTEGRATED MUNICIPAL AUTHORITIES LOGO LOOP
+         =================================================== */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-10">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs">
+          <IntegratedAuthoritiesLoop speed={40} />
         </div>
       </section>
 

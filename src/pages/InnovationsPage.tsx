@@ -1,43 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { innovationService } from '../services/innovationService';
-import { Innovation, InnovationCategory } from '../types';
+import { Innovation } from '../types';
+import { getLocalizedInnovation, getLocalizedCategory } from '../utils/localizedData';
 import {
   Lightbulb,
   PlusCircle,
   ThumbsUp,
   Award,
-  Filter,
-  UserCheck,
   ChevronRight,
-  TrendingUp,
-  Tag,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  ArrowRight,
 } from 'lucide-react';
 
 export const InnovationsPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const [innovations, setInnovations] = useState<Innovation[]>([]);
+  const [rawInnovations, setInnovations] = useState<Innovation[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
 
   const categories = [
-    'All',
-    'Waste Management',
-    'Traffic & Mobility',
-    'Water Conservation',
-    'Digital Governance',
-    'Green Urban Spaces',
+    { key: 'All', label: language === 'mr' ? 'सर्व' : language === 'hi' ? 'सभी' : 'All' },
+    { key: 'Waste Management', label: getLocalizedCategory('Waste Management', language) },
+    { key: 'Traffic & Mobility', label: language === 'mr' ? 'वाहतूक आणि गतिशीलता' : language === 'hi' ? 'यातायात एवं गतिशीलता' : 'Traffic & Mobility' },
+    { key: 'Water Conservation', label: language === 'mr' ? 'जलसंधारण व पुनर्वापर' : language === 'hi' ? 'जल संरक्षण एवं पुनर्चक्रण' : 'Water Conservation' },
+    { key: 'Digital Governance', label: language === 'mr' ? 'डिजिटल नागरिक सेवा' : language === 'hi' ? 'डिजिटल नागरिक सेवाएं' : 'Digital Governance' },
+    { key: 'Green Urban Spaces', label: language === 'mr' ? 'हरित नागरी उद्याने' : language === 'hi' ? 'हरित शहरी पार्क' : 'Green Urban Spaces' },
   ];
 
   useEffect(() => {
     innovationService.getInnovations().then(setInnovations);
   }, []);
+
+  const localizedInnovations = useMemo(() => {
+    return rawInnovations.map((item) => getLocalizedInnovation(item, language));
+  }, [rawInnovations, language]);
 
   const handleVote = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -56,9 +53,10 @@ export const InnovationsPage: React.FC = () => {
     }
   };
 
-  const filteredInnovations = innovations.filter((item) => {
+  const filteredInnovations = localizedInnovations.filter((item, idx) => {
     if (selectedCategory === 'All') return true;
-    return item.category === selectedCategory;
+    const rawCategory = rawInnovations[idx]?.category;
+    return rawCategory === selectedCategory;
   });
 
   const getStageBadge = (stage: Innovation['stage']) => {
@@ -74,6 +72,36 @@ export const InnovationsPage: React.FC = () => {
     }
   };
 
+  const getStageLabel = (stage: Innovation['stage']) => {
+    switch (stage) {
+      case 'Pilot Approved':
+        return language === 'mr' ? 'प्रायोगिक मंजुरी' : language === 'hi' ? 'पायलट स्वीकृत' : 'Pilot Approved';
+      case 'Implemented':
+        return language === 'mr' ? 'अंमलबजावणी पूर्ण' : language === 'hi' ? 'कार्यान्वित' : 'Implemented';
+      case 'Under Review':
+        return language === 'mr' ? 'पुनरावलोकन सुरू' : language === 'hi' ? 'समीक्षाधीन' : 'Under Review';
+      default:
+        return stage;
+    }
+  };
+
+  const getSubmitterTypeLabel = (type: string) => {
+    switch (type) {
+      case 'Student Team':
+        return language === 'mr' ? 'विद्यार्थी गट' : language === 'hi' ? 'छात्र दल' : 'Student Team';
+      case 'Citizen Collective':
+        return language === 'mr' ? 'नागरिक समूह' : language === 'hi' ? 'नागरिक समूह' : 'Citizen Collective';
+      case 'Civic Tech NGO':
+        return language === 'mr' ? 'नागरी तंत्रज्ञान स्वयंसेवी संस्था' : language === 'hi' ? 'नागरिक तकनीक एनजीओ' : 'Civic Tech NGO';
+      case 'Resident Welfare Association':
+        return language === 'mr' ? 'रहिवासी संघ' : language === 'hi' ? 'निवासी कल्याण संघ' : 'Resident Welfare Association';
+      case 'Urban Planning Scholar':
+        return language === 'mr' ? 'नगररचना अभ्यासक' : language === 'hi' ? 'नगर नियोजन शोधकर्ता' : 'Urban Planning Scholar';
+      default:
+        return type;
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header Banner */}
@@ -81,7 +109,7 @@ export const InnovationsPage: React.FC = () => {
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white backdrop-blur-xs">
             <Lightbulb className="w-3.5 h-3.5 text-amber-200" />
-            <span>Civic Innovation Engine</span>
+            <span>{language === 'mr' ? 'नागरी नवकल्पना व्यासपीठ' : language === 'hi' ? 'नागरिक नवाचार मंच' : 'Civic Innovation Engine'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
             {t.innovations.title}
@@ -107,22 +135,28 @@ export const InnovationsPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
           {categories.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              key={cat.key}
+              onClick={() => setSelectedCategory(cat.key)}
               type="button"
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                selectedCategory === cat
+                selectedCategory === cat.key
                   ? 'bg-slate-900 text-white font-semibold'
                   : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
         </div>
 
         <div className="text-xs text-slate-500">
-          Showing <strong>{filteredInnovations.length}</strong> active proposals
+          {language === 'mr' ? (
+            <>सक्रिय प्रस्ताव: <strong>{filteredInnovations.length}</strong></>
+          ) : language === 'hi' ? (
+            <>सक्रिय प्रस्ताव: <strong>{filteredInnovations.length}</strong></>
+          ) : (
+            <>Showing <strong>{filteredInnovations.length}</strong> active proposals</>
+          )}
         </div>
       </div>
 
@@ -147,7 +181,7 @@ export const InnovationsPage: React.FC = () => {
                       item.stage
                     )}`}
                   >
-                    {item.stage}
+                    {getStageLabel(item.stage)}
                   </span>
                 </div>
 
@@ -163,7 +197,7 @@ export const InnovationsPage: React.FC = () => {
                   <span className="font-medium text-slate-800">{item.submitterName}</span>
                   <span>•</span>
                   <span className="text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                    {item.submitterType}
+                    {getSubmitterTypeLabel(item.submitterType)}
                   </span>
                 </div>
 
@@ -176,11 +210,11 @@ export const InnovationsPage: React.FC = () => {
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1 text-slate-600">
                     <Award className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Feasibility: <strong>{item.feasibilityScore}/100</strong></span>
+                    <span>{language === 'mr' ? 'व्यवहार्यता:' : language === 'hi' ? 'व्यावहारिकता:' : 'Feasibility:'} <strong>{item.feasibilityScore}/100</strong></span>
                   </div>
 
                   <span className="text-[11px] font-mono text-slate-500">
-                    Est: {item.costEstimate}
+                    {language === 'mr' ? 'अंदाजे:' : language === 'hi' ? 'अनुमानित:' : 'Est:'} {item.costEstimate}
                   </span>
                 </div>
               </div>
@@ -195,7 +229,7 @@ export const InnovationsPage: React.FC = () => {
                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                       : 'bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200'
                   }`}
-                  title="Support this civic proposal"
+                  title={language === 'mr' ? 'या प्रस्तावास पाठिंबा द्या' : language === 'hi' ? 'इस प्रस्ताव का समर्थन करें' : 'Support this civic proposal'}
                 >
                   <ThumbsUp className={`w-3.5 h-3.5 ${hasVoted ? 'fill-blue-600 text-blue-600' : ''}`} />
                   <span>{item.votes}</span>

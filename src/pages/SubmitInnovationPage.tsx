@@ -6,6 +6,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { innovationService } from '../services/innovationService';
 import { InnovationCategory, EvidenceItem } from '../types';
 import { FileUploader } from '../components/common/FileUploader';
+import { getLocalizedCategory } from '../utils/localizedData';
 import {
   Lightbulb,
   ArrowLeft,
@@ -27,7 +28,7 @@ const CATEGORIES: InnovationCategory[] = [
 ];
 
 export const SubmitInnovationPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { showToast } = useNotifications();
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export const SubmitInnovationPage: React.FC = () => {
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Innovations</span>
+          <span>{language === 'mr' ? 'नवकल्पना यादीकडे परत' : language === 'hi' ? 'नवाचार सूची पर वापस' : 'Back to Innovations'}</span>
         </Link>
       </div>
 
@@ -102,10 +103,10 @@ export const SubmitInnovationPage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-              Submit a Civic Innovation Proposal
+              {language === 'mr' ? 'नागरी नवकल्पना प्रस्ताव सादर करा' : language === 'hi' ? 'नागरिक नवाचार प्रस्ताव प्रस्तुत करें' : 'Submit a Civic Innovation Proposal'}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Co-create sustainable municipal solutions with local government and academic partners.
+              {language === 'mr' ? 'स्थानिक प्रशासन आणि शैक्षणिक भागीदारांसह शाश्वत नागरी उपाय सह-निर्मित करा.' : language === 'hi' ? 'स्थानीय प्रशासन और शैक्षणिक भागीदारों के साथ मिलकर व्यावहारिक नागरिक समाधान विकसित करें।' : 'Co-create sustainable municipal solutions with local government and academic partners.'}
             </p>
           </div>
         </div>
@@ -114,14 +115,14 @@ export const SubmitInnovationPage: React.FC = () => {
           {/* Title */}
           <div>
             <label htmlFor="proposal-title" className="block text-xs font-semibold text-slate-800 mb-1">
-              Proposal Title <span className="text-rose-500">*</span>
+              {language === 'mr' ? 'प्रस्तावाचे शीर्षक' : language === 'hi' ? 'प्रस्ताव का शीर्षक' : 'Proposal Title'} <span className="text-rose-500">*</span>
             </label>
             <input
               id="proposal-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Decentralized Organic Waste Composting Hubs for Ward 14"
+              placeholder={language === 'mr' ? 'उदा. प्रभाग १४ साठी विकेंद्रित सेंद्रिय खत निर्मिती केंद्र' : language === 'hi' ? 'उदा. वार्ड १४ के लिए विकेंद्रीकृत जैविक खाद केंद्र' : 'e.g. Decentralized Organic Waste Composting Hubs for Ward 14'}
               className="w-full text-xs sm:text-sm p-2.5 rounded border border-slate-300 focus:outline-blue-600 bg-white"
             />
             {errors.title && <p className="text-xs text-rose-600 mt-1">{errors.title}</p>}
@@ -131,7 +132,7 @@ export const SubmitInnovationPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="proposal-category" className="block text-xs font-semibold text-slate-800 mb-1">
-                Category
+                {language === 'mr' ? 'वर्ग / क्षेत्र' : language === 'hi' ? 'वर्ग / क्षेत्र' : 'Category'}
               </label>
               <select
                 id="proposal-category"
@@ -141,7 +142,7 @@ export const SubmitInnovationPage: React.FC = () => {
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
-                    {cat}
+                    {getLocalizedCategory(cat, language)}
                   </option>
                 ))}
               </select>
@@ -149,7 +150,7 @@ export const SubmitInnovationPage: React.FC = () => {
 
             <div>
               <label htmlFor="submitter-type" className="block text-xs font-semibold text-slate-800 mb-1">
-                Submitter Classification
+                {language === 'mr' ? 'प्रस्तावक वर्गवारी' : language === 'hi' ? 'प्रस्तावक वर्गीकरण' : 'Submitter Classification'}
               </label>
               <select
                 id="submitter-type"
@@ -157,11 +158,11 @@ export const SubmitInnovationPage: React.FC = () => {
                 onChange={(e) => setSubmitterType(e.target.value as any)}
                 className="w-full text-xs sm:text-sm p-2.5 rounded border border-slate-300 focus:outline-blue-600 bg-white"
               >
-                <option value="Citizen">Citizen</option>
-                <option value="Student team">Student / Youth Team</option>
-                <option value="NGO">Registered NGO / Community Org</option>
-                <option value="Researcher">Academic / Researcher</option>
-                <option value="Civic Tech">Civic Tech Startup</option>
+                <option value="Citizen">{language === 'mr' ? 'नागरिक' : language === 'hi' ? 'नागरिक' : 'Citizen'}</option>
+                <option value="Student team">{language === 'mr' ? 'विद्यार्थी / युवा गट' : language === 'hi' ? 'छात्र / युवा समूह' : 'Student / Youth Team'}</option>
+                <option value="NGO">{language === 'mr' ? 'नोंदणीकृत सामाजिक संस्था (NGO)' : language === 'hi' ? 'पंजीकृत सामाजिक संस्था (NGO)' : 'Registered NGO / Community Org'}</option>
+                <option value="Researcher">{language === 'mr' ? 'संशोधक / शैक्षणिक तज्ज्ञ' : language === 'hi' ? 'शोधकर्ता / अकादमिक विशेषज्ञ' : 'Academic / Researcher'}</option>
+                <option value="Civic Tech">{language === 'mr' ? 'सिव्हिक टेक स्टार्टअप' : language === 'hi' ? 'सिविक टेक स्टार्टअप' : 'Civic Tech Startup'}</option>
               </select>
             </div>
           </div>
@@ -169,7 +170,7 @@ export const SubmitInnovationPage: React.FC = () => {
           {/* Submitter Name */}
           <div>
             <label htmlFor="submitter-name" className="block text-xs font-semibold text-slate-800 mb-1">
-              Lead Proposer or Team Name <span className="text-rose-500">*</span>
+              {language === 'mr' ? 'प्रमुख प्रस्तावक किंवा चमूचे नाव' : language === 'hi' ? 'मुख्य प्रस्तावक या टीम का नाम' : 'Lead Proposer or Team Name'} <span className="text-rose-500">*</span>
             </label>
             <input
               id="submitter-name"
@@ -185,14 +186,14 @@ export const SubmitInnovationPage: React.FC = () => {
           {/* Problem Statement */}
           <div>
             <label htmlFor="problem-addressed" className="block text-xs font-semibold text-slate-800 mb-1">
-              Problem Addressed <span className="text-rose-500">*</span>
+              {language === 'mr' ? 'हाताळलेली नागरी समस्या' : language === 'hi' ? 'समाधित नागरिक समस्या' : 'Problem Addressed'} <span className="text-rose-500">*</span>
             </label>
             <textarea
               id="problem-addressed"
               rows={3}
               value={problemAddressed}
               onChange={(e) => setProblemAddressed(e.target.value)}
-              placeholder="What chronic civic issue or infrastructure deficit does this proposal resolve?"
+              placeholder={language === 'mr' ? 'हा प्रस्ताव कोणत्या जुनाट नागरी किंवा पायाभूत समस्येवर मात करतो?' : language === 'hi' ? 'यह प्रस्ताव किस पुरानी नागरिक या ढांचागत समस्या का समाधान करता है?' : 'What chronic civic issue or infrastructure deficit does this proposal resolve?'}
               className="w-full text-xs sm:text-sm p-2.5 rounded border border-slate-300 focus:outline-blue-600 bg-white"
             />
             {errors.problem && <p className="text-xs text-rose-600 mt-1">{errors.problem}</p>}
@@ -201,14 +202,14 @@ export const SubmitInnovationPage: React.FC = () => {
           {/* Proposed Solution */}
           <div>
             <label htmlFor="proposed-solution" className="block text-xs font-semibold text-slate-800 mb-1">
-              Proposed Solution & Methodology <span className="text-rose-500">*</span>
+              {language === 'mr' ? 'प्रस्तावित उपाय व कार्यपद्धती' : language === 'hi' ? 'प्रस्तावित समाधान एवं कार्यप्रणाली' : 'Proposed Solution & Methodology'} <span className="text-rose-500">*</span>
             </label>
             <textarea
               id="proposed-solution"
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe how the solution functions, required materials, technology, and operations..."
+              placeholder={language === 'mr' ? 'हा उपाय कसा काम करतो, आवश्यक साहित्य, तंत्रज्ञान आणि व्यवस्थापन स्पष्ट करा...' : language === 'hi' ? 'यह समाधान कैसे काम करता है, आवश्यक सामग्री, तकनीक और संचालन स्पष्ट करें...' : 'Describe how the solution functions, required materials, technology, and operations...'}
               className="w-full text-xs sm:text-sm p-2.5 rounded border border-slate-300 focus:outline-blue-600 bg-white"
             />
             {errors.description && <p className="text-xs text-rose-600 mt-1">{errors.description}</p>}
@@ -217,14 +218,14 @@ export const SubmitInnovationPage: React.FC = () => {
           {/* Expected Impact */}
           <div>
             <label htmlFor="expected-impact" className="block text-xs font-semibold text-slate-800 mb-1">
-              Expected Community Impact
+              {language === 'mr' ? 'अपेक्षित सामाजिक व पर्यावरणीय प्रभाव' : language === 'hi' ? 'अपेक्षित सामाजिक एवं पर्यावरणीय प्रभाव' : 'Expected Community Impact'}
             </label>
             <textarea
               id="expected-impact"
               rows={2}
               value={expectedImpact}
               onChange={(e) => setExpectedImpact(e.target.value)}
-              placeholder="e.g. Diverts 4 tons of organic garbage daily, eliminating open dumping in 3 sub-wards."
+              placeholder={language === 'mr' ? 'उदा. दररोज ४ टन सेंद्रिय कचरा प्रक्रिया होऊन ३ उपप्रभागांमधील उघड्यावर कचरा फेकणे बंद होईल.' : language === 'hi' ? 'उदा. प्रतिदिन ४ टन जैविक कचरा प्रसंस्कृत होगा जिससे ३ उप-वार्डों में कचरा फेंकना बंद होगा।' : 'e.g. Diverts 4 tons of organic garbage daily, eliminating open dumping in 3 sub-wards.'}
               className="w-full text-xs sm:text-sm p-2.5 rounded border border-slate-300 focus:outline-blue-600 bg-white"
             />
           </div>
@@ -233,7 +234,7 @@ export const SubmitInnovationPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="cost-estimate" className="block text-xs font-semibold text-slate-800 mb-1">
-                Estimated Pilot Cost
+                {language === 'mr' ? 'अंदाजे प्रायोगिक खर्च' : language === 'hi' ? 'अनुमानित पायलट लागत' : 'Estimated Pilot Cost'}
               </label>
               <input
                 id="cost-estimate"
@@ -247,7 +248,7 @@ export const SubmitInnovationPage: React.FC = () => {
 
             <div>
               <label htmlFor="timeline-estimate" className="block text-xs font-semibold text-slate-800 mb-1">
-                Pilot Timeline
+                {language === 'mr' ? 'प्रायोगिक कालावधी' : language === 'hi' ? 'पायलट समयावधि' : 'Pilot Timeline'}
               </label>
               <input
                 id="timeline-estimate"
@@ -263,22 +264,22 @@ export const SubmitInnovationPage: React.FC = () => {
           {/* File Upload for Pitch Deck or Diagram */}
           <div>
             <label className="block text-xs font-semibold text-slate-800 mb-1">
-              Supporting Blueprints or Slide Deck (Optional)
+              {language === 'mr' ? 'संबंधित आराखडे किंवा सादरीकरण (ऐच्छिक)' : language === 'hi' ? 'संबंधित आरेख या प्रेजेंटेशन (वैकल्पिक)' : 'Supporting Blueprints or Slide Deck (Optional)'}
             </label>
             <FileUploader
               files={files}
               onChange={setFiles}
               maxFiles={3}
-              helperText="Upload schematics, diagrams, or PDF overview decks."
+              helperText={language === 'mr' ? 'आरेखन, नकाशे किंवा पीडीएफ सादरीकरण अपलोड करा.' : language === 'hi' ? 'आरेख, नक्शे या पीडीएफ प्रेजेंटेशन अपलोड करें।' : 'Upload schematics, diagrams, or PDF overview decks.'}
             />
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
             <Link
               to="/innovations"
-              className="px-4 py-2 text-xs font-semibold rounded border border-slate-300 text-slate-700 hover:bg-slate-50"
+              className="px-4 py-2 text-xs font-semibold rounded border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
-              Cancel
+              {t.common.cancel}
             </Link>
 
             <button
@@ -289,12 +290,12 @@ export const SubmitInnovationPage: React.FC = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Submitting Proposal...</span>
+                  <span>{language === 'mr' ? 'प्रस्ताव सादर करत आहे...' : language === 'hi' ? 'प्रस्ताव जमा कर रहे हैं...' : 'Submitting Proposal...'}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Submit for Committee Review</span>
+                  <span>{language === 'mr' ? 'मूल्यांकनासाठी प्रस्ताव सादर करा' : language === 'hi' ? 'मूल्यांकन हेतु प्रस्तुत करें' : 'Submit for Committee Review'}</span>
                 </>
               )}
             </button>

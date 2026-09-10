@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { complaintService } from '../services/complaintService';
 import { Problem } from '../types';
+import { getLocalizedProblem } from '../utils/localizedData';
 import { TimelineView } from '../components/complaints/TimelineView';
 import { CitizenVerificationCard } from '../components/complaints/CitizenVerificationCard';
 import { StatusBadge, PriorityBadge } from '../components/common/StatusBadge';
@@ -11,30 +12,27 @@ import {
   Search,
   MapPin,
   Building2,
-  User,
-  Calendar,
-  Clock,
-  CheckCircle2,
   FileCheck2,
   AlertCircle,
   ExternalLink,
-  ChevronRight,
-  Shield,
   Loader2,
-  Sparkles,
   Paperclip,
 } from 'lucide-react';
 
 export const TrackPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialId = searchParams.get('id') || 'CIV-2026-001024';
 
   const [searchId, setSearchId] = useState(initialId);
-  const [problem, setProblem] = useState<Problem | null>(null);
+  const [rawProblem, setProblem] = useState<Problem | null>(null);
   const [sampleProblems, setSampleProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const problem = useMemo(() => {
+    return rawProblem ? getLocalizedProblem(rawProblem, language) : null;
+  }, [rawProblem, language]);
 
   useEffect(() => {
     complaintService.getComplaints().then((list) => {
@@ -78,7 +76,7 @@ export const TrackPage: React.FC = () => {
       {/* Header & Search */}
       <div className="max-w-3xl">
         <span className="text-xs uppercase font-bold tracking-wider text-blue-600">
-          Public Case Redressal Audit
+          {language === 'mr' ? 'सार्वजनिक तक्रार निवारण लेखापरीक्षण' : language === 'hi' ? 'सार्वजनिक समस्या निवारण ऑडिट' : 'Public Case Redressal Audit'}
         </span>
         <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           {t.track.title}
@@ -152,7 +150,7 @@ export const TrackPage: React.FC = () => {
                     {problem.id}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
-                    Logged: {new Date(problem.createdAt).toLocaleDateString()}
+                    {language === 'mr' ? 'नोंदणी: ' : language === 'hi' ? 'दर्ज तिथि: ' : 'Logged: '}{new Date(problem.createdAt).toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -175,7 +173,7 @@ export const TrackPage: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-800">Location:</span>{' '}
+                    <span className="font-semibold text-slate-800">{language === 'mr' ? 'स्थान:' : language === 'hi' ? 'स्थान:' : 'Location:'}</span>{' '}
                     <span>{problem.location.address}, {problem.location.ward}</span>
                   </div>
                 </div>
@@ -183,7 +181,7 @@ export const TrackPage: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-800">Department:</span>{' '}
+                    <span className="font-semibold text-slate-800">{language === 'mr' ? 'विभाग:' : language === 'hi' ? 'विभाग:' : 'Department:'}</span>{' '}
                     <span>{problem.department}</span>
                   </div>
                 </div>
@@ -205,7 +203,7 @@ export const TrackPage: React.FC = () => {
                     <span>{t.track.resolutionProof}</span>
                   </div>
                   <span className="text-[11px] font-mono bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
-                    Work Order: {problem.resolutionEvidence.workOrderRef || 'WO-COMPLETED'}
+                    {language === 'mr' ? 'कार्य आदेश: ' : language === 'hi' ? 'कार्य आदेश: ' : 'Work Order: '}{problem.resolutionEvidence.workOrderRef || 'WO-COMPLETED'}
                   </span>
                 </div>
 
@@ -216,7 +214,7 @@ export const TrackPage: React.FC = () => {
                 {problem.resolutionEvidence.media.length > 0 && (
                   <div>
                     <span className="text-xs font-semibold text-slate-700 block mb-2">
-                      Department Completion Proof Media:
+                      {language === 'mr' ? 'विभागीय काम पूर्णतेचा पुरावा:' : language === 'hi' ? 'विभागीय कार्य पूर्णता प्रमाण:' : 'Department Completion Proof Media:'}
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {problem.resolutionEvidence.media.map((item) => (
@@ -238,8 +236,8 @@ export const TrackPage: React.FC = () => {
                 )}
 
                 <div className="text-[11px] text-slate-400 pt-2 flex items-center justify-between border-t border-slate-100">
-                  <span>Certified by: {problem.resolutionEvidence.submittedBy} ({problem.resolutionEvidence.officerDesignation})</span>
-                  <span>Date: {problem.resolutionEvidence.completionDate}</span>
+                  <span>{language === 'mr' ? 'प्रमाणित अधिकारी: ' : language === 'hi' ? 'प्रमाणित कर्ता: ' : 'Certified by: '}{problem.resolutionEvidence.submittedBy} ({problem.resolutionEvidence.officerDesignation})</span>
+                  <span>{language === 'mr' ? 'तारीख: ' : language === 'hi' ? 'तिथि: ' : 'Date: '}{problem.resolutionEvidence.completionDate}</span>
                 </div>
               </div>
             )}
@@ -251,7 +249,7 @@ export const TrackPage: React.FC = () => {
                   {t.track.timelineHeading}
                 </h3>
                 <span className="text-xs text-slate-400">
-                  {problem.timeline.length} Recorded Steps
+                  {language === 'mr' ? `${problem.timeline.length} नोंदवलेली पावले` : language === 'hi' ? `${problem.timeline.length} दर्ज चरण` : `${problem.timeline.length} Recorded Steps`}
                 </span>
               </div>
 
@@ -275,10 +273,10 @@ export const TrackPage: React.FC = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="text-sm font-bold text-slate-900 truncate">
-                    {problem.assignedOfficer?.name || 'Department Central Pool'}
+                    {problem.assignedOfficer?.name || (language === 'mr' ? 'विभागीय मध्यवर्ती कक्ष' : language === 'hi' ? 'विभागीय केंद्रीय कक्ष' : 'Department Central Pool')}
                   </h4>
                   <p className="text-xs text-slate-500 truncate">
-                    {problem.assignedOfficer?.designation || 'Pending Field Dispatch'}
+                    {problem.assignedOfficer?.designation || (language === 'mr' ? 'क्षेत्रीय पथक प्रतीक्षेत' : language === 'hi' ? 'फील्ड टीम प्रतीक्षारत' : 'Pending Field Dispatch')}
                   </p>
                   <p className="text-xs text-blue-700 mt-1 truncate">
                     {problem.department}
@@ -288,13 +286,13 @@ export const TrackPage: React.FC = () => {
 
               <div className="pt-3 border-t border-slate-100 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">SLA Target Deadline:</span>
+                  <span className="text-slate-500">{language === 'mr' ? 'एसएलए अंतिम मुदत:' : language === 'hi' ? 'एसएलए अंतिम समय-सीमा:' : 'SLA Target Deadline:'}</span>
                   <span className="font-semibold text-slate-800">
                     {new Date(problem.deadline).toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Impact Scope:</span>
+                  <span className="text-slate-500">{language === 'mr' ? 'प्रभावाची व्याप्ती:' : language === 'hi' ? 'प्रभाव क्षेत्र:' : 'Impact Scope:'}</span>
                   <span className="font-medium text-slate-800">{problem.impactScope}</span>
                 </div>
               </div>
@@ -308,23 +306,30 @@ export const TrackPage: React.FC = () => {
               <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Paperclip className="w-3.5 h-3.5" />
-                  <span>Citizen Evidence Uploaded ({problem.evidence.length})</span>
+                  <span>{language === 'mr' ? `अपलोड केलेले नागरिक पुरावे (${problem.evidence.length})` : language === 'hi' ? `अपलोड किए गए नागरिक साक्ष्य (${problem.evidence.length})` : `Citizen Evidence Uploaded (${problem.evidence.length})`}</span>
                 </h3>
 
                 <div className="space-y-2">
                   {problem.evidence.map((item) => (
-                    <div key={item.id} className="p-2 rounded border border-slate-200 bg-slate-50 text-xs">
-                      {item.type === 'image' && (
-                        <img
-                          src={item.url}
-                          alt="Citizen evidence"
-                          className="w-full h-32 object-cover rounded mb-2"
-                        />
-                      )}
-                      <span className="font-medium text-slate-800 truncate block">{item.name}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {item.type.toUpperCase()} • {new Date(item.uploadedAt).toLocaleDateString()}
-                      </span>
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-2.5 rounded bg-slate-50 border border-slate-200 text-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          {item.type}
+                        </span>
+                        <span className="text-slate-700 truncate">{item.name}</span>
+                      </div>
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:text-blue-800 shrink-0 font-medium inline-flex items-center gap-1"
+                      >
+                        <span>{language === 'mr' ? 'पहा' : language === 'hi' ? 'देखें' : 'View'}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </div>
                   ))}
                 </div>
@@ -336,3 +341,4 @@ export const TrackPage: React.FC = () => {
     </div>
   );
 };
+

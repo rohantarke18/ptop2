@@ -1,39 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { consultationService } from '../services/consultationService';
 import { Consultation, ConsultationStatus } from '../types';
+import { getLocalizedConsultation } from '../utils/localizedData';
 import {
   Vote,
-  Calendar,
   Building2,
   Users,
   ChevronRight,
   Clock,
-  CheckCircle2,
-  FileText,
-  AlertCircle,
-  ArrowRight,
 } from 'lucide-react';
 
 export const ConsultationsPage: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [rawConsultations, setRawConsultations] = useState<Consultation[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
 
   const statusTabs = [
-    { label: 'All Consultations', value: 'All' },
-    { label: 'Active & Open', value: 'Active' },
-    { label: 'Under Deliberation', value: 'Under Deliberation' },
-    { label: 'Concluded & Adopted', value: 'Concluded' },
+    { label: language === 'mr' ? 'सर्व चर्चा' : language === 'hi' ? 'सभी परामर्श' : 'All Consultations', value: 'All' },
+    { label: language === 'mr' ? 'सक्रिय व खुले' : language === 'hi' ? 'सक्रिय एवं खुले' : 'Active & Open', value: 'Active' },
+    { label: language === 'mr' ? 'विचारविनिमय सुरू' : language === 'hi' ? 'विचाराधीन' : 'Under Deliberation', value: 'Under Deliberation' },
+    { label: language === 'mr' ? 'निष्कर्ष पूर्ण' : language === 'hi' ? 'संपन्न एवं स्वीकृत' : 'Concluded & Adopted', value: 'Concluded' },
   ];
 
   useEffect(() => {
-    consultationService.getConsultations().then(setConsultations);
+    consultationService.getConsultations().then(setRawConsultations);
   }, []);
 
-  const filteredConsultations = consultations.filter((item) => {
+  const localizedConsultations = useMemo(() => {
+    return rawConsultations.map((item) => getLocalizedConsultation(item, language));
+  }, [rawConsultations, language]);
+
+  const filteredConsultations = localizedConsultations.filter((item) => {
     if (selectedStatus === 'All') return true;
     return item.status === selectedStatus;
   });
@@ -51,6 +51,21 @@ export const ConsultationsPage: React.FC = () => {
     }
   };
 
+  const getStatusLabel = (status: ConsultationStatus) => {
+    switch (status) {
+      case 'Active':
+        return language === 'mr' ? 'सक्रिय' : language === 'hi' ? 'सक्रिय' : 'Active';
+      case 'Under Deliberation':
+        return language === 'mr' ? 'विचारविनिमय सुरू' : language === 'hi' ? 'विचाराधीन' : 'Under Deliberation';
+      case 'Concluded':
+        return language === 'mr' ? 'निष्कर्ष पूर्ण' : language === 'hi' ? 'संपन्न' : 'Concluded';
+      case 'Draft':
+        return language === 'mr' ? 'मसुदा' : language === 'hi' ? 'प्रारूप' : 'Draft';
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header Banner */}
@@ -58,7 +73,7 @@ export const ConsultationsPage: React.FC = () => {
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white backdrop-blur-xs">
             <Vote className="w-3.5 h-3.5 text-purple-300" />
-            <span>Participatory Democracy Room</span>
+            <span>{language === 'mr' ? 'सहभागी लोकशाही कक्ष' : language === 'hi' ? 'सहभागी लोकतंत्र कक्ष' : 'Participatory Democracy Room'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">
             {t.consultations.title}
@@ -89,7 +104,11 @@ export const ConsultationsPage: React.FC = () => {
         </div>
 
         <div className="text-xs text-slate-500">
-          Showing <strong>{filteredConsultations.length}</strong> public policy dockets
+          {language === 'mr'
+            ? <>एकूण <strong>{filteredConsultations.length}</strong> सार्वजनिक धोरण मसुदे उपलब्ध</>
+            : language === 'hi'
+            ? <>कुल <strong>{filteredConsultations.length}</strong> सार्वजनिक नीति प्रारूप प्रदर्शित</>
+            : <>Showing <strong>{filteredConsultations.length}</strong> public policy dockets</>}
         </div>
       </div>
 
@@ -108,14 +127,14 @@ export const ConsultationsPage: React.FC = () => {
               <div className="space-y-2 max-w-3xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${getStatusBadge(item.status)}`}>
-                    {item.status}
+                    {getStatusLabel(item.status)}
                   </span>
                   <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
                     <Building2 className="w-3 h-3 text-slate-400" />
                     {item.department}
                   </span>
                   <span className="text-xs text-slate-400">
-                    Topic: {item.topic}
+                    {language === 'mr' ? 'विषय: ' : language === 'hi' ? 'विषय: ' : 'Topic: '}{item.topic}
                   </span>
                 </div>
 
@@ -134,16 +153,31 @@ export const ConsultationsPage: React.FC = () => {
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     <span>
                       {daysLeft > 0 ? (
-                        <>Closing in <strong>{daysLeft} days</strong> ({new Date(item.deadline).toLocaleDateString()})</>
+                        language === 'mr' ? (
+                          <>अंतिम मुदत: <strong>{daysLeft} दिवस शिल्लक</strong> ({new Date(item.deadline).toLocaleDateString()})</>
+                        ) : language === 'hi' ? (
+                          <>अंतिम तिथि: <strong>{daysLeft} दिन शेष</strong> ({new Date(item.deadline).toLocaleDateString()})</>
+                        ) : (
+                          <>Closing in <strong>{daysLeft} days</strong> ({new Date(item.deadline).toLocaleDateString()})</>
+                        )
                       ) : (
-                        <>Deliberation closed on {new Date(item.deadline).toLocaleDateString()}</>
+                        language === 'mr' ? (
+                          <>विचारविनिमय पूर्ण: {new Date(item.deadline).toLocaleDateString()}</>
+                        ) : language === 'hi' ? (
+                          <>विचार-विमर्श संपन्न: {new Date(item.deadline).toLocaleDateString()}</>
+                        ) : (
+                          <>Deliberation closed on {new Date(item.deadline).toLocaleDateString()}</>
+                        )
                       )}
                     </span>
                   </span>
 
                   <span className="flex items-center gap-1">
                     <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span><strong>{item.totalResponses.toLocaleString()}</strong> citizen submissions</span>
+                    <span>
+                      <strong>{item.totalResponses.toLocaleString()}</strong>{' '}
+                      {language === 'mr' ? 'नागरिक प्रतिसाद' : language === 'hi' ? 'नागरिक प्रविष्टियाँ' : 'citizen submissions'}
+                    </span>
                   </span>
                 </div>
               </div>

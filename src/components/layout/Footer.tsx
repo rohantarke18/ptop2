@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Shield, ExternalLink, Heart, CheckCircle2, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 text-sm">
@@ -29,7 +29,7 @@ export const Footer: React.FC = () => {
             <div className="pt-1">
               <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-400/90 bg-amber-950/40 px-2.5 py-1 rounded border border-amber-800/50">
                 <Shield className="w-3 h-3 text-amber-400" />
-                <span>Independent Civic Platform</span>
+                <span>{language === 'mr' ? 'स्वतंत्र नागरी व्यासपीठ' : language === 'hi' ? 'स्वतंत्र नागरिक मंच' : 'Independent Civic Platform'}</span>
               </span>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/public-dashboard" className="hover:text-white transition-colors">
-                  SLA Redressal Metrics
+                  {language === 'mr' ? 'एसएलए निवारण मापदंड' : language === 'hi' ? 'एसएलए निवारण मेट्रिक्स' : 'SLA Redressal Metrics'}
                 </Link>
               </li>
               <li>
@@ -121,12 +121,16 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/accessibility" className="hover:text-white transition-colors">
-                  WCAG 2.1 AA Standards
+                  {language === 'mr' ? 'WCAG २.१ AA मानके' : language === 'hi' ? 'WCAG २.१ AA मानक' : 'WCAG 2.1 AA Standards'}
                 </Link>
               </li>
               <li>
                 <span className="text-slate-400 block pt-1 leading-relaxed">
-                  Citizens retain ownership of submitted photographic evidence. Verified logs are archived for public audit.
+                  {language === 'mr'
+                    ? 'सादर केलेल्या छायाचित्रांची मालकी नागरिकांकडे राहते. पडताळणी नोंदी सार्वजनिक तपासणीसाठी जतन केल्या जातात.'
+                    : language === 'hi'
+                    ? 'प्रस्तुत फ़ोटो का स्वामित्व नागरिकों के पास रहता है। सत्यापित रिकॉर्ड सार्वजनिक ऑडिट के लिए सुरक्षित हैं।'
+                    : 'Citizens retain ownership of submitted photographic evidence. Verified logs are archived for public audit.'}
                 </span>
               </li>
             </ul>
@@ -139,9 +143,9 @@ export const Footer: React.FC = () => {
             {t.footer.disclaimer}
           </p>
           <div className="flex items-center gap-4 text-[11px] text-slate-400 shrink-0">
-            <span>© {new Date().getFullYear()} CivicBridge Platform</span>
+            <span>© {new Date().getFullYear()} {t.brand.name} {language === 'mr' ? 'प्लॅटफॉर्म' : language === 'hi' ? 'प्लेटफॉर्म' : 'Platform'}</span>
             <span>•</span>
-            <span>Vercel Deploy Ready</span>
+            <span>{language === 'mr' ? 'नागरी सेवा सक्षम' : language === 'hi' ? 'नागरिक सेवा सक्षम' : 'Digital Civic Infrastructure'}</span>
           </div>
         </div>
       </div>
