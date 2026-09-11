@@ -33,26 +33,26 @@ export const CitizenDashboardPage: React.FC = () => {
 
   const loadData = () => {
     complaintService.getComplaints().then((all) => {
-      // Filter by user if logged in, or show all if demo/all
+      const problemList = Array.isArray(all) ? all : [];
       if (user?.id) {
-        const userProblems = all.filter(
+        const userProblems = problemList.filter(
           (p) => p.reporterUid === user.id || p.citizenName === user.name
         );
-        // If user has specific problems, show those; otherwise show all recorded problems
-        setProblems(userProblems.length > 0 ? userProblems : all);
+        setProblems(userProblems.length > 0 ? userProblems : problemList);
       } else {
-        setProblems(all);
+        setProblems(problemList);
       }
     });
 
     innovationService.getInnovations().then((all) => {
+      const innovationList = Array.isArray(all) ? all : [];
       if (user?.id) {
-        const userInnovations = all.filter(
+        const userInnovations = innovationList.filter(
           (inv) => inv.submitterUid === user.id || inv.submitterName === user.name
         );
-        setInnovations(userInnovations.length > 0 ? userInnovations : all);
+        setInnovations(userInnovations.length > 0 ? userInnovations : innovationList);
       } else {
-        setInnovations(all);
+        setInnovations(innovationList);
       }
     });
   };

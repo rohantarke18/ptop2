@@ -17,6 +17,12 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
 }) => {
   const { t } = useLanguage();
 
+  if (!assessment) {
+    return null;
+  }
+
+  const reasoningList = Array.isArray(assessment.reasoning) ? assessment.reasoning : [];
+
   return (
     <div
       className={`rounded-lg border border-indigo-100 bg-gradient-to-b from-indigo-50/50 to-white p-5 text-slate-800 ${className}`}
@@ -81,14 +87,14 @@ export const AiAssessmentCard: React.FC<AiAssessmentCardProps> = ({
       </div>
 
       {/* Reasoning points */}
-      {!compact && assessment.reasoning && assessment.reasoning.length > 0 && (
+      {!compact && reasoningList.length > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <h5 className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-indigo-600" />
             {t.aiCard.entitiesTitle}:
           </h5>
           <ul className="space-y-1.5">
-            {assessment.reasoning.map((item, idx) => (
+            {reasoningList.map((item, idx) => (
               <li key={idx} className="text-xs text-slate-600 flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
                 <span>{item}</span>

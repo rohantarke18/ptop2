@@ -1,5 +1,5 @@
 import { Consultation, ConsultationQuestion, ConsultationStatus } from '../types';
-import { db } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
 import {
   collection,
   doc,
@@ -80,7 +80,7 @@ export const consultationService = {
     };
 
     const docRef = doc(db, CONSULTATIONS_COLLECTION, generatedId);
-    await setDoc(docRef, newConsultation);
+    await setDoc(docRef, cleanFirestoreData(newConsultation));
 
     return newConsultation;
   },
@@ -94,7 +94,7 @@ export const consultationService = {
     if (!existing) throw new Error('Consultation not found');
 
     const merged = { ...existing, ...updates };
-    await updateDoc(docRef, updates);
+    await updateDoc(docRef, cleanFirestoreData(updates));
     return merged;
   },
 

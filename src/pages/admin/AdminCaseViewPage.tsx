@@ -251,13 +251,13 @@ export const AdminCaseViewPage: React.FC = () => {
             </div>
 
             {/* Citizen Evidence Attachments */}
-            {problem.evidence.length > 0 && (
+            {(problem.evidence?.length ?? 0) > 0 && (
               <div className="pt-3 border-t border-slate-100">
                 <span className="text-xs font-semibold text-slate-800 block mb-2">
-                  Citizen Uploaded Photographic Evidence ({problem.evidence.length}):
+                  Citizen Uploaded Photographic Evidence ({problem.evidence?.length ?? 0}):
                 </span>
                 <div className="grid grid-cols-2 gap-3">
-                  {problem.evidence.map((item) => (
+                  {(problem.evidence || []).map((item) => (
                     <div key={item.id} className="rounded border border-slate-200 overflow-hidden bg-slate-100">
                       {item.type === 'image' && (
                         <img
@@ -450,7 +450,7 @@ export const AdminCaseViewPage: React.FC = () => {
           <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-slate-500" />
-              <span>Internal Supervisory Notes ({problem.internalNotes.length})</span>
+              <span>Internal Supervisory Notes ({problem.internalNotes?.length ?? 0})</span>
             </h3>
 
             <form onSubmit={handleAddInternalNote} className="space-y-2">
@@ -473,7 +473,7 @@ export const AdminCaseViewPage: React.FC = () => {
             </form>
 
             <div className="space-y-2.5 pt-2 border-t border-slate-100 max-h-60 overflow-y-auto">
-              {problem.internalNotes.map((note) => (
+              {(problem.internalNotes || []).map((note) => (
                 <div key={note.id} className="p-2.5 rounded bg-slate-50 border border-slate-200/80 space-y-1 text-xs">
                   <div className="flex justify-between items-center text-[11px] text-slate-500">
                     <strong className="text-slate-800">{note.authorName} ({note.authorRole})</strong>

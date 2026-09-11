@@ -28,7 +28,7 @@ export const AdminOverviewPage: React.FC = () => {
   const [metrics, setMetrics] = useState<PublicMetrics | null>(null);
 
   useEffect(() => {
-    complaintService.getComplaints().then(setProblems);
+    complaintService.getComplaints().then((res) => setProblems(Array.isArray(res) ? res : []));
     analyticsService.getPublicMetrics().then(setMetrics);
   }, []);
 

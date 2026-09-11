@@ -175,7 +175,7 @@ const useAnimationLoop = (
 
 export const LogoLoop = memo<LogoLoopProps>(
   ({
-    logos,
+    logos = [],
     speed = 120,
     direction = 'left',
     width = '100%',
@@ -343,7 +343,7 @@ export const LogoLoop = memo<LogoLoopProps>(
             aria-hidden={copyIndex > 0}
             ref={copyIndex === 0 ? seqRef : undefined}
           >
-            {logos.map((item, itemIndex) => renderLogoItem(item, `${copyIndex}-${itemIndex}`))}
+            {(logos || []).map((item, itemIndex) => renderLogoItem(item, `${copyIndex}-${itemIndex}`))}
           </ul>
         )),
       [copyCount, logos, renderLogoItem]

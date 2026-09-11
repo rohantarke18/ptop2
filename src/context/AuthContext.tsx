@@ -7,6 +7,7 @@ import {
   signInCitizenQuick,
   logoutFirebase,
   testFirestoreConnection,
+  cleanFirestoreData,
 } from '../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -31,7 +32,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('civicbridge_active_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   // Initialize and listen to real Firebase Auth state
@@ -40,7 +48,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
       if (!fbUser) {
-        setUser(null);
+        // Only clear if not in persistent local session
+        const saved = localStorage.getItem('civicbridge_active_user');
+        if (!saved) {
+          setUser(null);
+        }
         setLoading(false);
         return;
       }
@@ -51,13 +63,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (userSnap.exists()) {
           const data = userSnap.data() as User;
-          setUser({
+          const updatedUser: User = {
             ...data,
             id: fbUser.uid,
             name: fbUser.displayName || data.name || 'Citizen User',
             email: fbUser.email || data.email || '',
             avatar: fbUser.photoURL || data.avatar,
-          });
+          };
+          setUser(updatedUser);
+          localStorage.setItem('civicbridge_active_user', JSON.stringify(updatedUser));
         } else {
           // Create initial user doc
           const newUser: User = {
@@ -66,24 +80,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: fbUser.email || '',
             role: 'citizen',
             avatar: fbUser.photoURL || undefined,
-            wardOrDistrict: 'Ward 14, Pune Central',
+            wardOrDistrict: 'Ward 8 (CIDCO / Kranti Chowk)',
           };
-          await setDoc(userRef, {
+          await setDoc(userRef, cleanFirestoreData({
             ...newUser,
             createdAt: new Date().toISOString(),
-          });
+          }), { merge: true });
           setUser(newUser);
+          localStorage.setItem('civicbridge_active_user', JSON.stringify(newUser));
         }
       } catch (err) {
         console.error('Error fetching user profile from Firestore:', err);
         // Fallback in-memory user
-        setUser({
+        const fallback: User = {
           id: fbUser.uid,
           name: fbUser.displayName || 'Citizen User',
           email: fbUser.email || '',
           role: 'citizen',
           avatar: fbUser.photoURL || undefined,
-        });
+          wardOrDistrict: 'Ward 8 (CIDCO / Kranti Chowk)',
+        };
+        setUser(fallback);
+        localStorage.setItem('civicbridge_active_user', JSON.stringify(fallback));
       } finally {
         setLoading(false);
       }
@@ -100,7 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let assignedRole: UserRole = targetRole;
     if (userSnap.exists()) {
       const existing = userSnap.data() as User;
-      // If user had an existing role and no explicit target role was requested, keep it
       if (targetRole === 'citizen' && existing.role) {
         assignedRole = existing.role;
       }
@@ -130,15 +147,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : assignedRole === 'expert'
           ? 'Civic Innovation Advisory Committee Member'
           : undefined,
-      wardOrDistrict: 'Ward 14, Pune Central',
+      wardOrDistrict: 'Ward 8 (CIDCO / Kranti Chowk)',
     };
 
-    await setDoc(userRef, {
-      ...userData,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    try {
+      await setDoc(userRef, cleanFirestoreData({
+        ...userData,
+        updatedAt: new Date().toISOString(),
+      }), { merge: true });
+    } catch (e) {
+      console.warn('Firestore setDoc user warning:', e);
+    }
 
     setUser(userData);
+    localStorage.setItem('civicbridge_active_user', JSON.stringify(userData));
     return userData;
   };
 
@@ -152,20 +174,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: emailOrPhone && emailOrPhone.includes('@') ? emailOrPhone : (fbUser.email || ''),
       phone: emailOrPhone && !emailOrPhone.includes('@') ? emailOrPhone : '+91 98200 00000',
       role: 'citizen',
-      wardOrDistrict: 'Ward 14, Pune Central',
+      wardOrDistrict: 'Ward 8 (CIDCO / Kranti Chowk)',
     };
 
     try {
       const userRef = doc(db, 'users', fbUser.uid);
-      await setDoc(userRef, {
+      await setDoc(userRef, cleanFirestoreData({
         ...userData,
         createdAt: new Date().toISOString(),
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('Firestore setDoc warning:', e);
     }
 
     setUser(userData);
+    localStorage.setItem('civicbridge_active_user', JSON.stringify(userData));
     return userData;
   };
 
@@ -206,20 +229,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : role === 'expert'
           ? 'Advisory Panel Member'
           : 'Chief Administrative Officer',
-      wardOrDistrict: 'Ward 14, Pune Central',
+      wardOrDistrict: 'Ward 8 (CIDCO / Kranti Chowk)',
     };
 
     try {
       const userRef = doc(db, 'users', fbUser.uid);
-      await setDoc(userRef, {
+      await setDoc(userRef, cleanFirestoreData({
         ...userData,
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      }), { merge: true });
     } catch (e) {
       console.warn('Firestore setDoc warning:', e);
     }
 
     setUser(userData);
+    localStorage.setItem('civicbridge_active_user', JSON.stringify(userData));
     return userData;
   };
 
@@ -228,7 +252,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await logoutFirebase();
+    try {
+      await logoutFirebase();
+    } catch (e) {
+      console.warn('Logout note:', e);
+    }
+    localStorage.removeItem('civicbridge_active_user');
     setUser(null);
   };
 

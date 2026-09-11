@@ -6,7 +6,7 @@ import {
   InnovationCategory,
   EvidenceItem,
 } from '../types';
-import { db } from '../lib/firebase';
+import { db, cleanFirestoreData } from '../lib/firebase';
 import {
   collection,
   doc,
@@ -21,6 +21,19 @@ import {
 
 const INNOVATIONS_COLLECTION = 'innovations';
 
+export function normalizeInnovation(raw: any): Innovation {
+  if (!raw) return raw;
+  return {
+    ...raw,
+    reviews: Array.isArray(raw.reviews) ? raw.reviews : [],
+    comments: Array.isArray(raw.comments) ? raw.comments : [],
+    voters: Array.isArray(raw.voters) ? raw.voters : [],
+    attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
+    votes: typeof raw.votes === 'number' ? raw.votes : 0,
+    feasibilityScore: typeof raw.feasibilityScore === 'number' ? raw.feasibilityScore : 70,
+  };
+}
+
 export const innovationService = {
   /**
    * Get all innovations from Firestore
@@ -31,7 +44,7 @@ export const innovationService = {
       const q = query(colRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
 
-      return snapshot.docs.map((d) => d.data() as Innovation);
+      return snapshot.docs.map((d) => normalizeInnovation(d.data()));
     } catch (err) {
       console.error('Error fetching innovations from Firestore:', err);
       return [];
@@ -46,7 +59,7 @@ export const innovationService = {
       const docRef = doc(db, INNOVATIONS_COLLECTION, id.trim());
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        return snap.data() as Innovation;
+        return normalizeInnovation(snap.data());
       }
       const all = await this.getInnovations();
       return all.find((item) => item.id.toLowerCase() === id.trim().toLowerCase()) || null;
@@ -119,7 +132,7 @@ export const innovationService = {
     };
 
     const docRef = doc(db, INNOVATIONS_COLLECTION, generatedId);
-    await setDoc(docRef, newInnovation);
+    await setDoc(docRef, cleanFirestoreData(newInnovation));
 
     return newInnovation;
   },
@@ -137,7 +150,7 @@ export const innovationService = {
       ...updates,
     };
 
-    await updateDoc(docRef, updates);
+    await updateDoc(docRef, cleanFirestoreData(updates));
     return merged;
   },
 

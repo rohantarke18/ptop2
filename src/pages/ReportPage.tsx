@@ -6,7 +6,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { complaintService } from '../services/complaintService';
 import { Problem, ProblemCategory, PriorityLevel, ImpactScope, EvidenceItem } from '../types';
 import { FileUploader } from '../components/common/FileUploader';
-import { MapPlaceholder } from '../components/common/MapPlaceholder';
+import { GoogleMapPicker } from '../components/common/GoogleMapPicker';
 import { AiAssessmentCard } from '../components/common/AiAssessmentCard';
 import { StatusBadge, PriorityBadge } from '../components/common/StatusBadge';
 import Stepper, { Step } from '../components/common/Stepper';
@@ -58,12 +58,12 @@ export const ReportPage: React.FC = () => {
   // Location State
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [ward, setWard] = useState('Ward 14 (Shivajinagar)');
-  const [city, setCity] = useState('Pune');
-  const [district, setDistrict] = useState('Pune Urban');
+  const [ward, setWard] = useState('Ward 8 (CIDCO / Kranti Chowk)');
+  const [city, setCity] = useState('Chhatrapati Sambhajinagar');
+  const [district, setDistrict] = useState('Chhatrapati Sambhajinagar');
   const [state, setState] = useState('Maharashtra');
-  const [pincode, setPincode] = useState('411005');
-  const [coords, setCoords] = useState({ lat: 18.5314, lng: 73.8293 });
+  const [pincode, setPincode] = useState('431001');
+  const [coords, setCoords] = useState({ lat: 19.8753, lng: 75.3433 });
 
   // Evidence State
   const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
@@ -121,22 +121,22 @@ export const ReportPage: React.FC = () => {
         category,
         description,
         location: {
-          address,
-          landmark,
-          ward,
-          city,
-          district,
-          state,
-          pincode,
+          address: address || 'Chhatrapati Sambhajinagar',
+          landmark: landmark || '',
+          ward: ward || 'Ward 8 (CIDCO / Kranti Chowk)',
+          city: city || 'Chhatrapati Sambhajinagar',
+          district: district || 'Chhatrapati Sambhajinagar',
+          state: state || 'Maharashtra',
+          pincode: pincode || '431001',
           coordinates: coords,
         },
-        evidence,
+        evidence: evidence || [],
         impactScope,
         urgency,
         citizenName: user?.name || 'Citizen User',
         citizenPhone: user?.phone || '+91 98201 23454',
-        reporterUid: user?.id,
-        reporterEmail: user?.email,
+        reporterUid: user?.id || '',
+        reporterEmail: user?.email || '',
       };
 
       const result = await complaintService.submitComplaint(payload);
@@ -475,14 +475,27 @@ export const ReportPage: React.FC = () => {
 
             {/* Map Component */}
             <div className="pt-2">
-              <span className="block text-xs font-semibold text-slate-800 mb-2">
-                Municipal Geo-Coordinates Pin
-              </span>
-              <MapPlaceholder
+              <div className="flex items-center justify-between mb-2">
+                <span className="block text-xs font-semibold text-slate-800">
+                  Google Map Municipal Location Pin <span className="text-rose-500">*</span>
+                </span>
+                <span className="text-[11px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  ✓ Free Google Map Enabled
+                </span>
+              </div>
+              <GoogleMapPicker
                 coordinates={coords}
                 onCoordinatesChange={setCoords}
                 addressLabel={`${address || 'Unspecified location'}, ${ward}`}
                 wardName={ward}
+                onAddressDetected={(detectedAddr, detectedWard) => {
+                  if (detectedAddr && !address) {
+                    setAddress(detectedAddr);
+                  }
+                  if (detectedWard) {
+                    setWard(detectedWard);
+                  }
+                }}
               />
             </div>
           </div>

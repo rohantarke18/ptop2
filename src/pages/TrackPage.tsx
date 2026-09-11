@@ -75,13 +75,14 @@ export const TrackPage: React.FC = () => {
   // Initial load
   useEffect(() => {
     complaintService.getComplaints().then((list) => {
-      setAllProblems(list);
+      const safeList = Array.isArray(list) ? list : [];
+      setAllProblems(safeList);
       if (urlId) {
         loadCase(urlId);
-      } else if (list.length > 0) {
+      } else if (safeList.length > 0) {
         // Load latest
-        setSearchId(list[0].id);
-        loadCase(list[0].id);
+        setSearchId(safeList[0].id);
+        loadCase(safeList[0].id);
       }
     });
   }, [urlId]);

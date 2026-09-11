@@ -9,7 +9,7 @@ import {
   AiAssessment,
   TimelineEvent,
 } from '../types';
-import { db } from '../lib/firebase';
+import { db, auth, signInCitizenQuick, cleanFirestoreData } from '../lib/firebase';
 import {
   collection,
   doc,
@@ -34,6 +34,43 @@ export interface ComplaintFilter {
   reporterUid?: string;
 }
 
+export function normalizeProblem(raw: any): Problem {
+  if (!raw) return raw;
+  return {
+    ...raw,
+    location: {
+      address: raw.location?.address || 'Chhatrapati Sambhajinagar',
+      landmark: raw.location?.landmark || '',
+      ward: raw.location?.ward || 'Ward 8 (CIDCO / Kranti Chowk)',
+      city: raw.location?.city || 'Chhatrapati Sambhajinagar',
+      district: raw.location?.district || 'Chhatrapati Sambhajinagar',
+      state: raw.location?.state || 'Maharashtra',
+      pincode: raw.location?.pincode || '431001',
+      coordinates: raw.location?.coordinates || { lat: 19.8753, lng: 75.3433 },
+    },
+    evidence: Array.isArray(raw.evidence) ? raw.evidence : [],
+    timeline: Array.isArray(raw.timeline) ? raw.timeline : [],
+    internalNotes: Array.isArray(raw.internalNotes) ? raw.internalNotes : [],
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    resolutionEvidence: raw.resolutionEvidence
+      ? {
+          ...raw.resolutionEvidence,
+          media: Array.isArray(raw.resolutionEvidence.media) ? raw.resolutionEvidence.media : [],
+        }
+      : undefined,
+    aiAssessment: raw.aiAssessment || {
+      category: raw.category || 'Roads & Infrastructure',
+      suggestedDepartment: raw.department || 'Municipal Road Maintenance & Civil Infrastructure',
+      suggestedPriority: raw.priority || 'Medium',
+      priorityScore: 70,
+      reasoning: [],
+      keyIdentifiedEntities: [],
+      isPreliminary: true,
+      generatedAt: new Date().toISOString(),
+    },
+  };
+}
+
 export const complaintService = {
   /**
    * Fetch all complaints from Cloud Firestore
@@ -44,7 +81,7 @@ export const complaintService = {
       const q = query(colRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
 
-      let list: Problem[] = snapshot.docs.map((docSnap) => docSnap.data() as Problem);
+      let list: Problem[] = snapshot.docs.map((docSnap) => normalizeProblem(docSnap.data()));
 
       if (filter) {
         if (filter.reporterUid) {
@@ -60,7 +97,7 @@ export const complaintService = {
           list = list.filter((p) => p.priority === filter.priority);
         }
         if (filter.ward && filter.ward !== 'All') {
-          list = list.filter((p) => p.location.ward === filter.ward);
+          list = list.filter((p) => p.location?.ward === filter.ward);
         }
         if (filter.department && filter.department !== 'All') {
           list = list.filter((p) => p.department === filter.department);
@@ -69,10 +106,10 @@ export const complaintService = {
           const s = filter.searchTerm.toLowerCase();
           list = list.filter(
             (p) =>
-              p.title.toLowerCase().includes(s) ||
-              p.description.toLowerCase().includes(s) ||
-              p.id.toLowerCase().includes(s) ||
-              p.location.address.toLowerCase().includes(s)
+              (p.title || '').toLowerCase().includes(s) ||
+              (p.description || '').toLowerCase().includes(s) ||
+              (p.id || '').toLowerCase().includes(s) ||
+              (p.location?.address || '').toLowerCase().includes(s)
           );
         }
       }
@@ -94,7 +131,7 @@ export const complaintService = {
       const snap = await getDoc(docRef);
 
       if (snap.exists()) {
-        return snap.data() as Problem;
+        return normalizeProblem(snap.data());
       }
 
       // Check if case was stored with different case
@@ -193,6 +230,17 @@ export const complaintService = {
         ? data.citizenPhone.slice(0, 3) + ' **** ' + data.citizenPhone.slice(-2)
         : '+91 98200 ****0';
 
+    // Ensure session uid if citizen is reporting anonymously
+    let effectiveUid = data.reporterUid || auth.currentUser?.uid;
+    if (!effectiveUid) {
+      try {
+        const anonUser = await signInCitizenQuick(data.citizenName || 'Citizen Submitter');
+        effectiveUid = anonUser.uid;
+      } catch (authErr) {
+        console.warn('Quick citizen auth note:', authErr);
+      }
+    }
+
     const newProblem: Problem = {
       id: generatedId,
       title: data.title,
@@ -204,7 +252,9 @@ export const complaintService = {
       urgency: data.urgency,
       priority: aiAssessment.suggestedPriority,
       status: 'Under Review',
-      evidence: data.evidence,
+      evidence: data.evidence || [],
+      internalNotes: [],
+      tags: [],
       aiAssessment,
       timeline: initialTimeline,
       deadline: deadlineDate.toISOString(),
@@ -212,14 +262,14 @@ export const complaintService = {
       updatedAt: now,
       citizenName: data.citizenName || 'Citizen',
       citizenPhoneMasked: maskedPhone,
-      reporterUid: data.reporterUid,
-      reporterEmail: data.reporterEmail,
+      reporterUid: effectiveUid || 'citizen_guest',
+      reporterEmail: data.reporterEmail || auth.currentUser?.email || '',
     };
 
     const docRef = doc(db, PROBLEMS_COLLECTION, generatedId);
-    await setDoc(docRef, newProblem);
+    await setDoc(docRef, cleanFirestoreData(newProblem));
 
-    return newProblem;
+    return normalizeProblem(newProblem);
   },
 
   /**
@@ -238,10 +288,10 @@ export const complaintService = {
       updatedAt: new Date().toISOString(),
     };
 
-    await updateDoc(docRef, {
+    await updateDoc(docRef, cleanFirestoreData({
       ...updates,
       updatedAt: merged.updatedAt,
-    });
+    }));
 
     return merged;
   },

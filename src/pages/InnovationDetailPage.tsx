@@ -275,7 +275,7 @@ export const InnovationDetailPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-500" />
                 <h3 className="text-base font-bold text-slate-900">
-                  {language === 'mr' ? 'तज्ज्ञ समिती परीक्षण' : language === 'hi' ? 'विशेषज्ञ सलाहकार मूल्यांकन' : 'Expert Advisory Evaluations'} ({innovation.reviews.length})
+                  {language === 'mr' ? 'तज्ज्ञ समिती परीक्षण' : language === 'hi' ? 'विशेषज्ञ सलाहकार मूल्यांकन' : 'Expert Advisory Evaluations'} ({innovation.reviews?.length ?? 0})
                 </h3>
               </div>
 
@@ -373,7 +373,7 @@ export const InnovationDetailPage: React.FC = () => {
 
             {/* Review List */}
             <div className="space-y-4 pt-1">
-              {innovation.reviews.map((rev) => (
+              {(innovation.reviews || []).map((rev) => (
                 <div key={rev.id} className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -404,7 +404,7 @@ export const InnovationDetailPage: React.FC = () => {
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <MessageSquare className="w-4 h-4 text-blue-600" />
               <h3 className="text-base font-bold text-slate-900">
-                {language === 'mr' ? 'नागरिक चर्चा' : language === 'hi' ? 'नागरिक चर्चा' : 'Community Discussion'} ({innovation.comments.length})
+                {language === 'mr' ? 'नागरिक चर्चा' : language === 'hi' ? 'नागरिक चर्चा' : 'Community Discussion'} ({innovation.comments?.length ?? 0})
               </h3>
             </div>
 
@@ -431,7 +431,7 @@ export const InnovationDetailPage: React.FC = () => {
 
             {/* Comment Thread List */}
             <div className="space-y-3 pt-3">
-              {innovation.comments.map((comm) => (
+              {(innovation.comments || []).map((comm) => (
                 <div key={comm.id} className="p-3.5 rounded bg-slate-50 border border-slate-200/70 space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
