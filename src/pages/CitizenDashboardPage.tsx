@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../context/NotificationContext';
 import { complaintService } from '../services/complaintService';
 import { innovationService } from '../services/innovationService';
 import { Problem, Innovation } from '../types';
@@ -16,20 +17,73 @@ import {
   ShieldCheck,
   MapPin,
   ChevronRight,
+  Trash2,
+  Edit3,
+  Lightbulb,
 } from 'lucide-react';
 
 export const CitizenDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const { t, language } = useLanguage();
+  const { showToast } = useNotifications();
 
   const [problems, setProblems] = useState<Problem[]>([]);
   const [innovations, setInnovations] = useState<Innovation[]>([]);
   const [activeTab, setActiveTab] = useState<'problems' | 'innovations'>('problems');
 
+  const loadData = () => {
+    complaintService.getComplaints().then((all) => {
+      // Filter by user if logged in, or show all if demo/all
+      if (user?.id) {
+        const userProblems = all.filter(
+          (p) => p.reporterUid === user.id || p.citizenName === user.name
+        );
+        // If user has specific problems, show those; otherwise show all recorded problems
+        setProblems(userProblems.length > 0 ? userProblems : all);
+      } else {
+        setProblems(all);
+      }
+    });
+
+    innovationService.getInnovations().then((all) => {
+      if (user?.id) {
+        const userInnovations = all.filter(
+          (inv) => inv.submitterUid === user.id || inv.submitterName === user.name
+        );
+        setInnovations(userInnovations.length > 0 ? userInnovations : all);
+      } else {
+        setInnovations(all);
+      }
+    });
+  };
+
   useEffect(() => {
-    complaintService.getComplaints().then(setProblems);
-    innovationService.getInnovations().then(setInnovations);
-  }, []);
+    loadData();
+  }, [user]);
+
+  const handleDeleteProblem = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete problem docket ${id}?`)) return;
+    try {
+      await complaintService.deleteComplaint(id);
+      showToast('success', 'Complaint Deleted', `Case ${id} removed.`);
+      loadData();
+    } catch (err: any) {
+      showToast('error', 'Error', err?.message || 'Failed to delete complaint.');
+    }
+  };
+
+  const handleDeleteInnovation = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete innovation submission ${id}?`)) return;
+    try {
+      await innovationService.deleteInnovation(id);
+      showToast('success', 'Innovation Deleted', `Proposal ${id} removed.`);
+      loadData();
+    } catch (err: any) {
+      showToast('error', 'Error', err?.message || 'Failed to delete innovation.');
+    }
+  };
 
   const localizedProblems = useMemo(() => {
     return problems.map((p) => getLocalizedProblem(p, language));
@@ -38,6 +92,10 @@ export const CitizenDashboardPage: React.FC = () => {
   const localizedInnovations = useMemo(() => {
     return innovations.map((inv) => getLocalizedInnovation(inv, language));
   }, [innovations, language]);
+
+  const pendingVerificationProblem = problems.find(
+    (p) => p.status === 'Resolution Submitted' || p.status === 'Citizen Verification'
+  );
 
   const pendingVerificationCount = problems.filter(
     (p) => p.status === 'Resolution Submitted' || p.status === 'Citizen Verification'
@@ -51,11 +109,11 @@ export const CitizenDashboardPage: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-base shrink-0">
-            {user?.name?.split(' ').map((n) => n[0]).join('') || 'CU'}
+            {user?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2) || 'CU'}
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-              {t.citizenDashboard.welcome}, {user?.name || t.citizenDashboard.citizenRole} ({t.citizenDashboard.citizenRole})
+              {t.citizenDashboard.welcome}, {user?.name || t.citizenDashboard.citizenRole}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               {t.citizenDashboard.residentOf} {residentWard}
@@ -66,10 +124,17 @@ export const CitizenDashboardPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/report"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{t.citizenDashboard.reportNewProblem}</span>
+          </Link>
+          <Link
+            to="/submit-innovation"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-colors"
+          >
+            <Lightbulb className="w-4 h-4" />
+            <span>Submit Innovation</span>
           </Link>
         </div>
       </div>
@@ -78,7 +143,7 @@ export const CitizenDashboardPage: React.FC = () => {
       {pendingVerificationCount > 0 && (
         <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded bg-purple-100 text-purple-700 shrink-0">
+            <div className="p-2 rounded-lg bg-purple-100 text-purple-700 shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -92,8 +157,8 @@ export const CitizenDashboardPage: React.FC = () => {
           </div>
 
           <Link
-            to="/track?id=CIV-2026-001024"
-            className="px-3.5 py-1.5 rounded bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs shrink-0 self-start sm:self-auto transition-colors"
+            to={`/track?id=${pendingVerificationProblem?.id || ''}`}
+            className="px-3.5 py-1.5 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs shrink-0 self-start sm:self-auto transition-colors"
           >
             {t.citizenDashboard.inspectVerify}
           </Link>
@@ -102,32 +167,32 @@ export const CitizenDashboardPage: React.FC = () => {
 
       {/* KPI stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500">{t.citizenDashboard.reportedByYou}</span>
           <p className="text-2xl font-bold text-slate-900 mt-1">{problems.length}</p>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500">{t.citizenDashboard.awaitingVerification}</span>
           <p className="text-2xl font-bold text-purple-600 mt-1">{pendingVerificationCount}</p>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500">{t.citizenDashboard.verifiedClosed}</span>
           <p className="text-2xl font-bold text-emerald-600 mt-1">
             {problems.filter((p) => p.status === 'Resolved').length}
           </p>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <span className="text-xs text-slate-500">{t.citizenDashboard.innovationsBacked}</span>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-xs text-slate-500">Proposals / Innovations</span>
           <p className="text-2xl font-bold text-amber-600 mt-1">{innovations.length}</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="space-y-4">
-        <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+        <div className="flex items-center gap-4 border-b border-slate-200 pb-2">
           <button
             type="button"
             onClick={() => setActiveTab('problems')}
@@ -156,14 +221,21 @@ export const CitizenDashboardPage: React.FC = () => {
         {activeTab === 'problems' && (
           <div className="space-y-3">
             {localizedProblems.length === 0 ? (
-              <div className="p-8 text-center bg-white rounded-lg border border-slate-200 text-slate-500 text-xs">
-                {t.citizenDashboard.emptyProblems}
+              <div className="p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-500 text-xs space-y-3">
+                <p>{t.citizenDashboard.emptyProblems || 'No civic grievances recorded yet.'}</p>
+                <Link
+                  to="/report"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Report Your First Problem</span>
+                </Link>
               </div>
             ) : (
               localizedProblems.map((prob) => (
                 <div
                   key={prob.id}
-                  className="bg-white rounded-lg border border-slate-200 p-5 shadow-2xs hover:shadow-xs transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs hover:shadow-xs transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="space-y-1.5 max-w-2xl">
                     <div className="flex flex-wrap items-center gap-2">
@@ -190,11 +262,19 @@ export const CitizenDashboardPage: React.FC = () => {
                   <div className="flex items-center gap-2 shrink-0">
                     <Link
                       to={`/track?id=${prob.id}`}
-                      className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-colors"
                     >
                       <span>{t.citizenDashboard.trackAudit}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteProblem(prob.id, e)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Problem"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))
@@ -206,14 +286,21 @@ export const CitizenDashboardPage: React.FC = () => {
         {activeTab === 'innovations' && (
           <div className="space-y-3">
             {localizedInnovations.length === 0 ? (
-              <div className="p-8 text-center bg-white rounded-lg border border-slate-200 text-slate-500 text-xs">
-                {t.citizenDashboard.emptyInnovations}
+              <div className="p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-500 text-xs space-y-3">
+                <p>{t.citizenDashboard.emptyInnovations || 'No citizen innovation submissions found.'}</p>
+                <Link
+                  to="/submit-innovation"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Submit an Innovation Proposal</span>
+                </Link>
               </div>
             ) : (
               localizedInnovations.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-lg border border-slate-200 p-5 shadow-2xs hover:shadow-xs transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs hover:shadow-xs transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="space-y-1 max-w-2xl">
                     <div className="flex items-center gap-2">
@@ -234,11 +321,19 @@ export const CitizenDashboardPage: React.FC = () => {
                     </span>
                     <Link
                       to={`/innovations/${item.id}`}
-                      className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors"
                     >
                       <span>{t.citizenDashboard.viewDossier}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteInnovation(item.id, e)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Innovation"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))

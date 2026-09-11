@@ -134,7 +134,9 @@ export const ReportPage: React.FC = () => {
         impactScope,
         urgency,
         citizenName: user?.name || 'Citizen User',
-        citizenPhoneMasked: user?.phone || '+91 98201 ****4',
+        citizenPhone: user?.phone || '+91 98201 23454',
+        reporterUid: user?.id,
+        reporterEmail: user?.email,
       };
 
       const result = await complaintService.submitComplaint(payload);

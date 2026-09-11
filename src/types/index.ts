@@ -4,6 +4,7 @@ export type UserRole = 'citizen' | 'officer' | 'department_admin' | 'super_admin
 
 export interface User {
   id: string;
+  uid?: string;
   name: string;
   email: string;
   phone?: string;
@@ -130,6 +131,9 @@ export interface Problem {
   updatedAt: string;
   citizenName: string;
   citizenPhoneMasked: string;
+  citizenPhone?: string;
+  reporterUid?: string;
+  reporterEmail?: string;
   resolutionEvidence?: ResolutionEvidence;
   citizenVerification?: CitizenVerification;
   internalNotes?: {
@@ -316,6 +320,12 @@ export interface Innovation {
   feasibilityScore: number;
   votes: number;
   hasVoted?: boolean;
+  submitterUid?: string;
+  submitterEmail?: string;
+  voters?: string[];
+  pilotDetails?: string;
+  grantAmount?: string;
+  recognitionBadge?: string;
   createdAt: string;
   reviews: InnovationReview[];
   comments: InnovationComment[];
@@ -341,6 +351,9 @@ export interface Consultation {
   summary: string;
   deadline: string;
   totalResponses: number;
+  createdByUid?: string;
+  createdAt?: string;
+  voters?: string[];
   questions: ConsultationQuestion[];
 }
 

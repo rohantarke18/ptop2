@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -25,10 +25,12 @@ import {
   Paperclip,
   Loader2,
   MapPin,
+  Trash2,
 } from 'lucide-react';
 
 export const AdminCaseViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, role } = useAuth();
   const { t } = useLanguage();
   const { showToast } = useNotifications();
@@ -37,6 +39,7 @@ export const AdminCaseViewPage: React.FC = () => {
   const [newStatus, setNewStatus] = useState<ProblemStatus>('In Progress');
   const [statusNote, setStatusNote] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Internal Note form
   const [internalNoteText, setInternalNoteText] = useState('');
@@ -154,6 +157,21 @@ export const AdminCaseViewPage: React.FC = () => {
     }
   };
 
+  const handleDeleteDocket = async () => {
+    if (!problem) return;
+    if (!window.confirm(`Permanently delete administrative docket ${problem.id}?`)) return;
+
+    try {
+      setIsDeleting(true);
+      await complaintService.deleteComplaint(problem.id);
+      showToast('success', 'Docket Deleted', `Docket ${problem.id} has been permanently deleted.`);
+      navigate('/admin/problems');
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err?.message || 'Failed to delete docket.');
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Back button and Docket Header */}
@@ -180,8 +198,20 @@ export const AdminCaseViewPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-xs text-slate-500 text-right">
-          <span>Target SLA Deadline: <strong>{new Date(problem.deadline).toLocaleDateString()}</strong></span>
+        <div className="flex items-center gap-3 text-xs text-slate-500 text-right">
+          <div>
+            <span>Target SLA Deadline: <strong>{new Date(problem.deadline).toLocaleDateString()}</strong></span>
+          </div>
+          <button
+            type="button"
+            onClick={handleDeleteDocket}
+            disabled={isDeleting}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold border border-rose-200 transition-colors cursor-pointer disabled:opacity-50"
+            title="Delete this complaint"
+          >
+            {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            <span>Delete Docket</span>
+          </button>
         </div>
       </div>
 

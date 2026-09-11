@@ -3,14 +3,18 @@ import { Link } from 'react-router-dom';
 import { innovationService } from '../../services/innovationService';
 import { useNotifications } from '../../context/NotificationContext';
 import { Innovation, InnovationStage } from '../../types';
-import { Lightbulb, Award, ThumbsUp, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Lightbulb, Award, ThumbsUp, ChevronRight, CheckCircle2, Trash2 } from 'lucide-react';
 
 export const AdminInnovationsPage: React.FC = () => {
   const [innovations, setInnovations] = useState<Innovation[]>([]);
   const { showToast } = useNotifications();
 
-  useEffect(() => {
+  const loadData = () => {
     innovationService.getInnovations().then(setInnovations);
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleAdvanceStage = async (id: string, nextStage: InnovationStage) => {
@@ -20,6 +24,17 @@ export const AdminInnovationsPage: React.FC = () => {
       showToast('success', 'Stage Advanced', `Proposal is now marked as "${nextStage}".`);
     } catch (err: any) {
       showToast('error', 'Error', err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm(`Permanently delete proposal ${id}?`)) return;
+    try {
+      await innovationService.deleteInnovation(id);
+      showToast('success', 'Deleted', `Proposal ${id} removed.`);
+      loadData();
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err.message);
     }
   };
 
@@ -98,6 +113,14 @@ export const AdminInnovationsPage: React.FC = () => {
                     >
                       Dossier
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors inline-block align-middle cursor-pointer"
+                      title="Delete Proposal"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { complaintService } from '../services/complaintService';
 import { Problem } from '../types';
 import { getLocalizedProblem } from '../utils/localizedData';
@@ -12,33 +14,41 @@ import {
   Search,
   MapPin,
   Building2,
-  FileCheck2,
   AlertCircle,
-  ExternalLink,
   Loader2,
   Paperclip,
+  Trash2,
+  Edit3,
+  Calendar,
+  PlusCircle,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const TrackPage: React.FC = () => {
   const { t, language } = useLanguage();
+  const { user, isAdminOrOfficer } = useAuth();
+  const { showToast } = useNotifications();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialId = searchParams.get('id') || 'CIV-2026-001024';
 
-  const [searchId, setSearchId] = useState(initialId);
+  const urlId = searchParams.get('id') || '';
+  const [searchId, setSearchId] = useState(urlId);
   const [rawProblem, setProblem] = useState<Problem | null>(null);
-  const [sampleProblems, setSampleProblems] = useState<Problem[]>([]);
+  const [allProblems, setAllProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Edit Mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const problem = useMemo(() => {
     return rawProblem ? getLocalizedProblem(rawProblem, language) : null;
   }, [rawProblem, language]);
-
-  useEffect(() => {
-    complaintService.getComplaints().then((list) => {
-      setSampleProblems(list.slice(0, 4));
-    });
-  }, []);
 
   const loadCase = async (idToLoad: string) => {
     if (!idToLoad.trim()) return;
@@ -48,10 +58,12 @@ export const TrackPage: React.FC = () => {
       const res = await complaintService.getComplaintById(idToLoad.trim());
       if (res) {
         setProblem(res);
+        setEditTitle(res.title);
+        setEditDesc(res.description);
         setSearchParams({ id: idToLoad.trim() });
       } else {
         setProblem(null);
-        setErrorMessage(t.track.caseNotFound);
+        setErrorMessage(t.track.caseNotFound || `Case ${idToLoad} not found.`);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error retrieving case docket');
@@ -60,23 +72,89 @@ export const TrackPage: React.FC = () => {
     }
   };
 
+  // Initial load
   useEffect(() => {
-    if (initialId) {
-      loadCase(initialId);
-    }
-  }, [initialId]);
+    complaintService.getComplaints().then((list) => {
+      setAllProblems(list);
+      if (urlId) {
+        loadCase(urlId);
+      } else if (list.length > 0) {
+        // Load latest
+        setSearchId(list[0].id);
+        loadCase(list[0].id);
+      }
+    });
+  }, [urlId]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     loadCase(searchId);
   };
 
+  const handleDelete = async () => {
+    if (!problem) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete case docket ${problem.id}? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      await complaintService.deleteComplaint(problem.id);
+      showToast('success', 'Case Deleted', `Docket ${problem.id} has been permanently deleted.`);
+
+      const remaining = allProblems.filter((p) => p.id !== problem.id);
+      setAllProblems(remaining);
+
+      if (remaining.length > 0) {
+        setSearchId(remaining[0].id);
+        loadCase(remaining[0].id);
+      } else {
+        setProblem(null);
+        setSearchParams({});
+      }
+    } catch (err: any) {
+      showToast('error', 'Delete Failed', err?.message || 'Could not delete case.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!problem) return;
+    if (!editTitle.trim() || !editDesc.trim()) return;
+
+    try {
+      setIsSavingEdit(true);
+      const updated = await complaintService.updateComplaint(problem.id, {
+        title: editTitle.trim(),
+        description: editDesc.trim(),
+      });
+      setProblem(updated);
+      setIsEditing(false);
+      showToast('success', 'Docket Updated', 'Complaint details updated successfully.');
+    } catch (err: any) {
+      showToast('error', 'Update Failed', err?.message || 'Could not save updates.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const canModify =
+    isAdminOrOfficer ||
+    (user && rawProblem && (rawProblem.reporterUid === user.id || rawProblem.citizenName === user.name));
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header & Search */}
       <div className="max-w-3xl">
         <span className="text-xs uppercase font-bold tracking-wider text-blue-600">
-          {language === 'mr' ? 'सार्वजनिक तक्रार निवारण लेखापरीक्षण' : language === 'hi' ? 'सार्वजनिक समस्या निवारण ऑडिट' : 'Public Case Redressal Audit'}
+          {language === 'mr'
+            ? 'सार्वजनिक तक्रार निवारण लेखापरीक्षण'
+            : language === 'hi'
+            ? 'सार्वजनिक समस्या निवारण ऑडिट'
+            : 'Public Case Redressal Audit'}
         </span>
         <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           {t.track.title}
@@ -93,47 +171,79 @@ export const TrackPage: React.FC = () => {
               type="text"
               value={searchId}
               onChange={(e) => setSearchId(e.target.value)}
-              placeholder={t.track.searchPlaceholder}
-              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded border border-slate-300 bg-white focus:outline-blue-600 font-mono"
+              placeholder={t.track.searchPlaceholder || 'Enter Reference ID e.g. CIV-2026-XXXX'}
+              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-lg border border-slate-300 bg-white focus:outline-blue-600 font-mono"
             />
           </div>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-5 py-2 rounded bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+            className="px-5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
           >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t.track.searchBtn}
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t.track.searchBtn || 'Track Case'}
           </button>
         </form>
 
-        {/* Quick Sample Selector */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <span className="font-medium">{t.track.recentCases}:</span>
-          {sampleProblems.map((sp) => (
-            <button
-              key={sp.id}
-              type="button"
-              onClick={() => {
-                setSearchId(sp.id);
-                loadCase(sp.id);
-              }}
-              className={`px-2 py-0.5 rounded font-mono text-[11px] border cursor-pointer ${
-                problem?.id === sp.id
-                  ? 'bg-blue-50 border-blue-300 text-blue-800 font-bold'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              {sp.id}
-            </button>
-          ))}
-        </div>
+        {/* Recent Cases Selector */}
+        {allProblems.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="font-medium">{t.track.recentCases || 'Logged Cases'}:</span>
+            {allProblems.slice(0, 5).map((sp) => (
+              <button
+                key={sp.id}
+                type="button"
+                onClick={() => {
+                  setSearchId(sp.id);
+                  loadCase(sp.id);
+                }}
+                className={`px-2 py-0.5 rounded font-mono text-[11px] border cursor-pointer transition-colors ${
+                  problem?.id === sp.id
+                    ? 'bg-blue-50 border-blue-300 text-blue-800 font-bold'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {sp.id}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error state */}
       {errorMessage && (
-        <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <Link
+            to="/report"
+            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-semibold"
+          >
+            Report Problem
+          </Link>
+        </div>
+      )}
+
+      {/* If No Problems Exist in System */}
+      {!problem && allProblems.length === 0 && !isLoading && (
+        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center space-y-4 max-w-lg mx-auto">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">No Problems Recorded Yet</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+              You are running on a clean live database. File your first civic grievance to begin real-time tracking.
+            </p>
+          </div>
+          <Link
+            to="/report"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>File New Grievance</span>
+          </Link>
         </div>
       )}
 
@@ -150,38 +260,113 @@ export const TrackPage: React.FC = () => {
                     {problem.id}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
-                    {language === 'mr' ? 'नोंदणी: ' : language === 'hi' ? 'दर्ज तिथि: ' : 'Logged: '}{new Date(problem.createdAt).toLocaleDateString()}
+                    {language === 'mr' ? 'नोंदणी: ' : language === 'hi' ? 'दर्ज तिथि: ' : 'Logged: '}
+                    {new Date(problem.createdAt).toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <PriorityBadge priority={problem.priority} size="sm" />
                   <StatusBadge status={problem.status} size="md" />
+                  {canModify && (
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(!isEditing)}
+                        className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+                        title="Edit Docket"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
+                        title="Delete Docket"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-600" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                  {problem.title}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-                  {problem.description}
-                </p>
-              </div>
+              {/* Editing Form */}
+              {isEditing ? (
+                <form onSubmit={handleSaveEdit} className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-xs font-bold text-slate-800 block">Edit Problem Details</span>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600">Title</label>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full text-xs p-2 rounded border border-slate-300 bg-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600">Description</label>
+                    <textarea
+                      value={editDesc}
+                      onChange={(e) => setEditDesc(e.target.value)}
+                      rows={3}
+                      className="w-full text-xs p-2 rounded border border-slate-300 bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingEdit}
+                      className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold"
+                    >
+                      {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
+                    {problem.title}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                    {problem.description}
+                  </p>
+                </div>
+              )}
 
               {/* Meta tags row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs text-slate-600">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-800">{language === 'mr' ? 'स्थान:' : language === 'hi' ? 'स्थान:' : 'Location:'}</span>{' '}
-                    <span>{problem.location.address}, {problem.location.ward}</span>
+                    <span className="font-semibold text-slate-800">
+                      {language === 'mr' ? 'स्थान:' : language === 'hi' ? 'स्थान:' : 'Location:'}
+                    </span>{' '}
+                    <span>
+                      {problem.location.address}, {problem.location.ward}
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2">
                   <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-800">{language === 'mr' ? 'विभाग:' : language === 'hi' ? 'विभाग:' : 'Department:'}</span>{' '}
+                    <span className="font-semibold text-slate-800">
+                      {language === 'mr' ? 'विभाग:' : language === 'hi' ? 'विभाग:' : 'Department:'}
+                    </span>{' '}
                     <span>{problem.department}</span>
                   </div>
                 </div>
@@ -198,147 +383,106 @@ export const TrackPage: React.FC = () => {
             {problem.resolutionEvidence && (
               <div className="bg-white rounded-xl border border-teal-200 p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-teal-100">
-                  <div className="flex items-center gap-2 text-teal-900 font-bold text-sm">
-                    <FileCheck2 className="w-4 h-4 text-teal-700" />
-                    <span>{t.track.resolutionProof}</span>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-teal-600" />
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Official Resolution Work Order Evidence
+                    </h3>
                   </div>
-                  <span className="text-[11px] font-mono bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
-                    {language === 'mr' ? 'कार्य आदेश: ' : language === 'hi' ? 'कार्य आदेश: ' : 'Work Order: '}{problem.resolutionEvidence.workOrderRef || 'WO-COMPLETED'}
+                  <span className="text-[11px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    {problem.resolutionEvidence.workOrderRef}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded border border-slate-200">
+                <p className="text-xs text-slate-600 leading-relaxed">
                   {problem.resolutionEvidence.notes}
                 </p>
 
-                {problem.resolutionEvidence.media.length > 0 && (
-                  <div>
-                    <span className="text-xs font-semibold text-slate-700 block mb-2">
-                      {language === 'mr' ? 'विभागीय काम पूर्णतेचा पुरावा:' : language === 'hi' ? 'विभागीय कार्य पूर्णता प्रमाण:' : 'Department Completion Proof Media:'}
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {problem.resolutionEvidence.media.map((item) => (
-                        <div key={item.id} className="rounded border border-slate-200 overflow-hidden bg-slate-100">
-                          {item.type === 'image' && (
-                            <img
-                              src={item.url}
-                              alt="Work completion evidence"
-                              className="w-full h-40 object-cover"
-                            />
-                          )}
-                          <div className="p-2 text-[11px] text-slate-600 bg-white">
-                            <span>{item.name}</span>
+                {problem.resolutionEvidence.media && problem.resolutionEvidence.media.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                    {problem.resolutionEvidence.media.map((med) => (
+                      <div
+                        key={med.id}
+                        className="rounded-lg overflow-hidden border border-slate-200 bg-slate-50"
+                      >
+                        {med.type === 'image' ? (
+                          <img
+                            src={med.url}
+                            alt={med.name}
+                            className="w-full h-28 object-cover"
+                          />
+                        ) : (
+                          <div className="p-3 text-center text-xs text-slate-600">
+                            <Paperclip className="w-4 h-4 mx-auto mb-1 text-slate-400" />
+                            <span className="truncate block font-medium">{med.name}</span>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                <div className="text-[11px] text-slate-400 pt-2 flex items-center justify-between border-t border-slate-100">
-                  <span>{language === 'mr' ? 'प्रमाणित अधिकारी: ' : language === 'hi' ? 'प्रमाणित कर्ता: ' : 'Certified by: '}{problem.resolutionEvidence.submittedBy} ({problem.resolutionEvidence.officerDesignation})</span>
-                  <span>{language === 'mr' ? 'तारीख: ' : language === 'hi' ? 'तिथि: ' : 'Date: '}{problem.resolutionEvidence.completionDate}</span>
-                </div>
               </div>
             )}
 
-            {/* Timeline View */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900">
-                  {t.track.timelineHeading}
-                </h3>
-                <span className="text-xs text-slate-400">
-                  {language === 'mr' ? `${problem.timeline.length} नोंदवलेली पावले` : language === 'hi' ? `${problem.timeline.length} दर्ज चरण` : `${problem.timeline.length} Recorded Steps`}
+            {/* Timeline Audit Trail */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+              <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center justify-between">
+                <span>{language === 'mr' ? 'कारवाईची वेळरेखा' : language === 'hi' ? 'कार्रवाई की समयरेखा' : 'Administrative Redressal Audit Trail'}</span>
+                <span className="text-[11px] text-slate-400 font-normal">
+                  SLA Target: {new Date(problem.deadline).toLocaleDateString()}
                 </span>
-              </div>
-
-              <TimelineView events={problem.timeline} currentStatus={problem.status} />
+              </h3>
+              <TimelineView events={problem.timeline} />
             </div>
           </div>
 
-          {/* Right Col: Admin & SLA Metrics */}
+          {/* Right Col: AI Assessment & Assignment Details */}
           <div className="space-y-6">
-            {/* Responsible Officer Card */}
+            <AiAssessmentCard assessment={problem.aiAssessment} />
+
+            {/* Assigned Officer Details */}
             <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                {t.track.officerDetails}
-              </h3>
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Assigned Nodal Officer
+              </h4>
+              {problem.assignedOfficer ? (
+                <div className="space-y-1.5 text-xs">
+                  <div className="font-semibold text-slate-900">{problem.assignedOfficer.name}</div>
+                  <div className="text-slate-500">{problem.assignedOfficer.designation}</div>
+                  <div className="text-slate-400 text-[11px]">{problem.assignedOfficer.department}</div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 italic">
+                  Officer assignment pending automated department triage.
+                </p>
+              )}
 
-              <div className="flex items-start gap-3 pt-1">
-                <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs">
-                  {problem.assignedOfficer?.name
-                    ? problem.assignedOfficer.name.split(' ').map((n) => n[0]).join('')
-                    : 'DE'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-slate-900 truncate">
-                    {problem.assignedOfficer?.name || (language === 'mr' ? 'विभागीय मध्यवर्ती कक्ष' : language === 'hi' ? 'विभागीय केंद्रीय कक्ष' : 'Department Central Pool')}
-                  </h4>
-                  <p className="text-xs text-slate-500 truncate">
-                    {problem.assignedOfficer?.designation || (language === 'mr' ? 'क्षेत्रीय पथक प्रतीक्षेत' : language === 'hi' ? 'फील्ड टीम प्रतीक्षारत' : 'Pending Field Dispatch')}
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1 truncate">
-                    {problem.department}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">{language === 'mr' ? 'एसएलए अंतिम मुदत:' : language === 'hi' ? 'एसएलए अंतिम समय-सीमा:' : 'SLA Target Deadline:'}</span>
-                  <span className="font-semibold text-slate-800">
-                    {new Date(problem.deadline).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">{language === 'mr' ? 'प्रभावाची व्याप्ती:' : language === 'hi' ? 'प्रभाव क्षेत्र:' : 'Impact Scope:'}</span>
-                  <span className="font-medium text-slate-800">{problem.impactScope}</span>
-                </div>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>Target SLA Deadline:</span>
+                <span className="font-semibold text-slate-800">
+                  {new Date(problem.deadline).toLocaleDateString()}
+                </span>
               </div>
             </div>
 
-            {/* AI Assessment Card */}
-            <AiAssessmentCard assessment={problem.aiAssessment} />
-
-            {/* Attached Citizen Evidence */}
-            {problem.evidence.length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5" />
-                  <span>{language === 'mr' ? `अपलोड केलेले नागरिक पुरावे (${problem.evidence.length})` : language === 'hi' ? `अपलोड किए गए नागरिक साक्ष्य (${problem.evidence.length})` : `Citizen Evidence Uploaded (${problem.evidence.length})`}</span>
-                </h3>
-
-                <div className="space-y-2">
-                  {problem.evidence.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-2.5 rounded bg-slate-50 border border-slate-200 text-xs"
-                    >
-                      <div className="flex items-center gap-2 truncate pr-2">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                          {item.type}
-                        </span>
-                        <span className="text-slate-700 truncate">{item.name}</span>
-                      </div>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:text-blue-800 shrink-0 font-medium inline-flex items-center gap-1"
-                      >
-                        <span>{language === 'mr' ? 'पहा' : language === 'hi' ? 'देखें' : 'View'}</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  ))}
-                </div>
+            {/* Citizen Reporter Info */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-2 text-xs">
+              <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                Citizen Audit Docket
+              </h4>
+              <div className="text-slate-600">
+                <span className="text-slate-400">Reporter:</span> {problem.citizenName}
               </div>
-            )}
+              <div className="text-slate-600">
+                <span className="text-slate-400">Masked Contact:</span> {problem.citizenPhoneMasked}
+              </div>
+              <div className="text-slate-600">
+                <span className="text-slate-400">Impact Scope:</span> {problem.impactScope}
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 };
-

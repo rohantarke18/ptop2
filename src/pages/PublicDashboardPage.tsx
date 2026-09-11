@@ -212,18 +212,18 @@ export const PublicDashboardPage: React.FC = () => {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500 font-medium">{t.publicStats.reported}</span>
           <p className="text-2xl font-extrabold text-slate-900 mt-1">
-            {metrics?.totalReported.toLocaleString()}
+            {(metrics?.totalReported ?? 0).toLocaleString()}
           </p>
           <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
             <TrendingUp className="w-3 h-3" />{' '}
-            {language === 'mr' ? '+१२% या महिन्यात' : language === 'hi' ? '+12% इस माह' : '+12% this month'}
+            {language === 'mr' ? 'थेट अहवाल' : language === 'hi' ? 'लाइव डेटा' : 'Live Data'}
           </span>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500 font-medium">{t.publicStats.resolved}</span>
           <p className="text-2xl font-extrabold text-emerald-600 mt-1">
-            {metrics?.totalResolved.toLocaleString()}
+            {(metrics?.totalResolved ?? 0).toLocaleString()}
           </p>
           <span className="text-[11px] text-slate-500 mt-1 block">
             {language === 'mr' ? 'पूर्णता पुराव्यासह' : language === 'hi' ? 'पूर्णता प्रमाण सहित' : 'With completion proof'}
@@ -233,7 +233,7 @@ export const PublicDashboardPage: React.FC = () => {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500 font-medium">{t.publicStats.verifiedRate}</span>
           <p className="text-2xl font-extrabold text-purple-600 mt-1">
-            {metrics?.verificationRate}%
+            {metrics?.verificationRate ?? 0}%
           </p>
           <span className="text-[11px] text-slate-500 mt-1 block">
             {language === 'mr' ? 'नागरिकांकडून प्रत्यक्ष पडताळणी' : language === 'hi' ? 'नागरिकों द्वारा स्वतंत्र सत्यापन' : 'Independently verified'}
@@ -245,7 +245,7 @@ export const PublicDashboardPage: React.FC = () => {
             {language === 'mr' ? 'SLA अनुपालन दर' : language === 'hi' ? 'SLA अनुपालन दर' : 'SLA Compliance'}
           </span>
           <p className="text-2xl font-extrabold text-blue-600 mt-1">
-            {metrics?.slaComplianceRate}%
+            {metrics?.slaComplianceRate ?? 0}%
           </p>
           <span className="text-[11px] text-slate-500 mt-1 block">
             {language === 'mr' ? 'कायदेशीर वेळेत' : language === 'hi' ? 'वैधानिक समय-सीमा में' : 'Within statutory target'}
@@ -255,7 +255,7 @@ export const PublicDashboardPage: React.FC = () => {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <span className="text-xs text-slate-500 font-medium">{t.publicStats.avgTime}</span>
           <p className="text-2xl font-extrabold text-amber-600 mt-1">
-            {metrics?.averageResolutionDays} {t.publicStats.days}
+            {metrics?.averageResolutionDays ?? 0} {t.publicStats.days}
           </p>
           <span className="text-[11px] text-slate-500 mt-1 block">
             {language === 'mr' ? 'लक्ष्य: ≤ ५.० दिवस' : language === 'hi' ? 'लक्ष्य: ≤ 5.0 दिन' : 'Target: ≤ 5.0 days'}

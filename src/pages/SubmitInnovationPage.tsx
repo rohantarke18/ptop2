@@ -72,6 +72,8 @@ export const SubmitInnovationPage: React.FC = () => {
         expectedImpact,
         costEstimate,
         timelineEstimate,
+        submitterUid: user?.id,
+        submitterEmail: user?.email,
         attachments: files,
       });
 
